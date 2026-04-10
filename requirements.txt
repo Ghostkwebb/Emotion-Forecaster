@@ -1,0 +1,11 @@
+pandas
+numpy
+yfinance
+jupyter
+matplotlib
+scikit-learn
+nltk
+joblib
+fastapi
+uvicorn
+pydantic
