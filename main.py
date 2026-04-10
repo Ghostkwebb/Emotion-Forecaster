@@ -11,7 +11,7 @@ lower_model = joblib.load('assets/models/lower_model.pkl')
 median_model = joblib.load('assets/models/median_model.pkl')
 upper_model = joblib.load('assets/models/upper_model.pkl')
 
-# 2. Define the input Sharad's UI will send us
+# 2. Define the input UI  will send us
 class ForecastRequest(BaseModel):
     current_price: float
     current_sentiment: float
@@ -32,24 +32,32 @@ def generate_forecast(req: ForecastRequest):
     sim_sentiment = req.current_sentiment
     sim_hype = req.current_hype_volume
     
-    # Loop for 1 to 6 weeks (depending on what Sharad requests)
+    # Loop for 1 to 6 weeks
     for day in range(1, req.days_to_forecast + 1):
-        # Create a dataframe for the AI to read
         features = pd.DataFrame([{
             'Prev_Close': simulated_price_median, 
             'Prev_Sentiment': sim_sentiment, 
             'Prev_Hype': sim_hype
         }])
         
-        # Predict the CHANGE for tomorrow
+        # 1. Get raw predictions
         change_lower = lower_model.predict(features)[0]
         change_median = median_model.predict(features)[0]
         change_upper = upper_model.predict(features)[0]
         
-        # Add the change to the running total prices
-        simulated_price_lower += change_lower
-        simulated_price_median += change_median
-        simulated_price_upper += change_upper
+        # 2. Add changes to the running price
+        raw_lower_price = simulated_price_median + change_lower
+        raw_median_price = simulated_price_median + change_median
+        raw_upper_price = simulated_price_median + change_upper
+        
+        # 3. THE FIX: The Quantile Crossing Bouncer
+        # We put the three prices in a list and sort them from lowest to highest.
+        # This guarantees the bounds never cross each other, even in extreme scenarios.
+        sorted_prices = sorted([raw_lower_price, raw_median_price, raw_upper_price])
+        
+        simulated_price_lower = sorted_prices[0]  # Guaranteed lowest
+        simulated_price_median = sorted_prices[1] # Guaranteed middle
+        simulated_price_upper = sorted_prices[2]  # Guaranteed highest
         
         # Save this day's results
         forecast_results.append({
