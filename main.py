@@ -23,7 +23,7 @@ app.add_middleware(
 )
 
 # ==========================================
-# 2. LOAD AI MODELS & DATA (With Radar Logic)
+# 2. LOAD AI MODELS & DATA (With Radar & XAI)
 # ==========================================
 try:
     lower_model = joblib.load("lower_model.pkl")
@@ -32,14 +32,24 @@ try:
         
     historical_df = pd.read_csv("final_training_data.csv") 
     mega_cap_df = pd.read_csv("mega_cap_sentiment.csv")
+    root_cause_df = pd.read_csv("root_cause_data.csv") # --- NEW: Load XAI Data
 
     historical_df['Date'] = historical_df['Date'].astype(str)
     mega_cap_df['Date'] = mega_cap_df['Date'].astype(str)
+    root_cause_df['Date'] = root_cause_df['Date'].astype(str) # --- NEW: Stringify Date
 
+    # Merge all datasets together
     merged_df = pd.merge(historical_df, mega_cap_df, on='Date', how='left')
+    merged_df = pd.merge(merged_df, root_cause_df, on='Date', how='left') # --- NEW: Merge XAI
+
+    # --- NEW: Clean up missing Reddit posts before filling the rest with 0.0
+    merged_df['top_post_text'] = merged_df['top_post_text'].fillna("No major narrative detected today.")
+    merged_df['top_post_upvotes'] = merged_df['top_post_upvotes'].fillna(0)
+    merged_df['top_post_url'] = merged_df['top_post_url'].fillna("")
+
     merged_df = merged_df.fillna(0.0)
 
-    # --- NEW: EARLY WARNING RADAR LOGIC ---
+    # EARLY WARNING RADAR LOGIC
     # Sort chronologically so rolling math works correctly
     merged_df = merged_df.sort_values(by='Date').reset_index(drop=True)
     
@@ -153,9 +163,14 @@ def get_historical_simulation():
                 "amazon_sentiment": round(row['amzn_sent'], 3),
                 "nvidia_sentiment": round(row['nvda_sent'], 3),
 
-                # --- NEW EARLY WARNING RADAR ---
+                # EARLY WARNING RADAR
                 "anomaly_status": str(row['Anomaly_Status']),
-                "z_score": round(row['Z_Score'], 2)
+                "z_score": round(row['Z_Score'], 2),
+
+                # --- NEW ROOT CAUSE XAI ---
+                "root_cause_text": str(row['top_post_text']),
+                "root_cause_upvotes": int(row['top_post_upvotes']),
+                "root_cause_url": str(row['top_post_url'])
             })
             
         return {
