@@ -1,277 +1,349 @@
 <div align="center">
+  <br/>
+  <img src="https://github.com/user-attachments/assets/63b3f892-d480-47d4-b191-690bebebdadb" width="90" alt="HIVE Logo" />
+  <br/><br/>
 
-  # 🐝 H.I.V.E. (Emotion-Forecaster)
-  **Institutional Market Forecasting Driven by the Speed of Internet Sentiment.**
+  # H · I · V · E
 
-  [![React](https://img.shields.io/badge/Frontend-React%20%7C%20Next.js-blue?style=flat-square)](https://reactjs.org/)
-  [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square)](https://fastapi.tiangolo.com/)
-  [![Machine Learning](https://img.shields.io/badge/AI-Gradient%20Boosting%20%7C%20NLTK-FF9900?style=flat-square)](https://scikit-learn.org/)
-  [![Hackathon](https://img.shields.io/badge/NatWest-Code%20for%20Purpose-purple?style=flat-square)](#)
+  ### **Hype-Intelligence Volatility Engine**
+  *Institutional-grade market forecasting, powered by the speed of internet sentiment.*
 
-  <p>
-    Traditional math failed during the 2021 meme-stock crisis. H.I.V.E. bridges the gap between chaotic internet culture and actionable financial data, transforming 53,000 raw social media posts into highly accurate, explainable market forecasts.
-  </p>
+  <br/>
+
+  ![React](https://img.shields.io/badge/React%20%2F%20Next.js-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+  ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+  ![Python](https://img.shields.io/badge/Python_3.9+-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+  ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
+  ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+
+  <br/>
+
+  > **When GameStop went parabolic in 2021, every quant model on Wall Street failed.**
+  > H.I.V.E. was built to make sure it never catches you off-guard again.
+
+  <br/>
+
+  [**→ View Demo**](#7-usage-guide) &nbsp;·&nbsp; [**→ Quick Start**](#6-installation) &nbsp;·&nbsp; [**→ Architecture**](#4-architecture)
+
+  <br/>
+
+  <img src="https://img.shields.io/badge/Built%20for-NatWest%20Code%20for%20Purpose-6A0DAD?style=flat-square" />
+
+  <br/><br/>
 
 </div>
 
 ---
 
-## 1. Overview
+## What is H.I.V.E.?
 
-**What it does:** H.I.V.E. is an Explainable AI (XAI) web application that quantifies raw internet sentiment and uses machine learning to predict market volatility. It features a historical "Time Machine" to replay past market crashes and a "What-If Sandbox" for predictive scenario testing. 
-**What problem it solves:** Traditional quantitative models cannot account for sudden, sentiment-driven market anomalies (like retail hype or panic). H.I.V.E. solves this by tracking narrative drivers and providing mathematically sound confidence intervals for volatile assets.
-**Intended users:** Financial analysts, institutional risk managers, and advanced retail traders looking to stress-test portfolios against social sentiment shocks.
+H.I.V.E. is an **Explainable AI (XAI)** web application that transforms 53,000 raw social media posts into actionable, statistically-bounded market forecasts. It bridges the gap that traditional quant models can't cross — the irrational, narrative-driven volatility of retail-dominated markets.
 
----
+Traditional models price *fundamentals.* H.I.V.E. prices **hype.**
 
-## 2. Implemented Features
 
-*   **Historical Proof "Time Machine":** A live timeline engine that plays back the 2021 market anomaly at 60fps, plotting the AI's predictions versus actual historical prices.
-*   **Root Cause Explainable AI (XAI):** Click any data point on the chart to instantly open a glassmorphism modal revealing the exact social media post (and upvote count) that drove the model's prediction.
-*   **Early Warning Radar:** A live feed that automatically flags statistical anomalies. When daily sentiment breaches a Z-Score of $\ge 2.0$ or $\le -2.0$, the UI triggers a "Market Panic" or "Extreme Euphoria" alert.
-*   **Dynamic Sector Heatmaps:** Animated radar charts that visually track the tug-of-war of capital flow across Tech, EV, Finance, and Meme sectors.
-*   **Predictive "What-If Sandbox":** A 30-day forecasting engine where users can adjust current price, retail sentiment, and hype volume via sliders to instantly generate a projected "Cone of Uncertainty" without layout thrashing.
-*   **Cross-Tab Branching:** Users can pause the historical timeline on a volatile day, click "Branch to Sandbox," and instantly copy those exact market conditions into the forecasting engine.
+**⏪ Time Machine** — Replay historical market crashes at 60fps, watching AI predictions unfold against real price action in real time.
+
+**🔬 Root Cause XAI** — Click any data point to reveal the exact Reddit post — and its upvote count — that drove the model's prediction.
+
+**🧪 What-If Sandbox** — Adjust sentiment and hype sliders to instantly project a 30-day "Cone of Uncertainty" for any scenario.
 
 ---
 
-## 3. Tech Stack
+## Features
 
-**Frontend (Client)**
-*   **React / Next.js (App Router):** Core UI framework utilizing modern server/client boundary architecture.
-*   **Tailwind CSS & Framer Motion:** Used for the dark-mode Bento Grid design, glassmorphism, and buttery-smooth spring animations.
-*   **Recharts:** For rendering the complex "Cone of Uncertainty" area graphs and custom SVG-filtered neon line charts.
+<details>
+<summary><b>⚡ Early Warning Radar</b></summary>
+<br/>
+A live feed that continuously monitors statistical anomalies. When daily sentiment breaches a Z-Score of ≥ 2.0 or ≤ −2.0, H.I.V.E. triggers a real-time <code>MARKET PANIC</code> or <code>EXTREME EUPHORIA</code> alert — before price action confirms it.
+<br/><br/>
+</details>
 
-**Backend (Server & AI)**
-*   **FastAPI & Python:** High-performance backend for automatic JSON serialization and low-latency endpoints.
-*   **Scikit-Learn (Joblib):** Serving three pre-trained Gradient Boosting Machine (GBM) models for Quantile Regression.
-*   **NLTK (VADER):** Natural Language Processing used to distill raw posts into quantitative sentiment scores.
-*   **Pandas & NumPy:** For on-the-fly mathematical processing, merging, and standard deviation calculations.
+<details>
+<summary><b>📡 Dynamic Sector Heatmaps</b></summary>
+<br/>
+Animated radar charts that visualize live capital flow battles across <strong>Tech</strong>, <strong>EV</strong>, <strong>Finance</strong>, and <strong>Meme</strong> sectors. Watch sentiment shift in real-time as narratives dominate the feed.
+<br/><br/>
+</details>
+
+<details>
+<summary><b>🔀 Cross-Tab Branching</b></summary>
+<br/>
+Pause the historical timeline on any volatile day, click <strong>"Branch to Sandbox,"</strong> and the exact market conditions — price, sentiment score, hype volume — are instantly cloned into the forecasting engine. No manual re-entry.
+<br/><br/>
+</details>
+
+<details>
+<summary><b>🤖 Quantile Regression AI</b></summary>
+<br/>
+Three concurrent GBM models generate a mathematically-bounded 30-day forecast. A custom <strong>"Quantile Bouncer"</strong> algorithm in FastAPI guarantees confidence intervals never cross — lower &lt; median &lt; upper, always.
+<br/><br/>
+</details>
 
 ---
 
-## 4. Highlighting Technical Depth (Architecture)
+## Architecture
 
-We built H.I.V.E. to be institutional-grade. Below is the system architecture diagram illustrating how raw unstructured data flows through our NLP pipelines, into our machine learning models, and finally to the Next.js frontend.
+H.I.V.E. is a three-stage pipeline: raw text → NLP enrichment → ML inference → live dashboard.
 
 ```mermaid
 flowchart TD
-    %% Styling
-    classDef offlineDef fill:#1e1e2e,stroke:#cba6f7,stroke-width:2px,color:#fff;
-    classDef backendDef fill:#1e1e2e,stroke:#89b4fa,stroke-width:2px,color:#fff;
-    classDef frontendDef fill:#1e1e2e,stroke:#a6e3a1,stroke-width:2px,color:#fff;
+    classDef offlineDef fill:#1e1e2e,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4
+    classDef backendDef fill:#1e1e2e,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4
+    classDef frontendDef fill:#1e1e2e,stroke:#a6e3a1,stroke-width:2px,color:#cdd6f4
 
-    subgraph Pipeline [1. Offline NLP Processing]
+    subgraph Pipeline ["① Offline NLP Processing"]
         direction TB
         A[(53,000 Raw Posts)] -->|NLTK VADER| B(Python Parsers)
         B --> C[process_megacaps.py]
         B --> D[process_sectors.py]
         B --> E[process_root_cause.py]
-        C & D & E --> F[(Cleaned Data CSVs)]
+        C & D & E --> F[(Cleaned CSVs)]
     end
 
-    subgraph API [2. AI Engine & FastAPI]
+    subgraph API ["② AI Engine — FastAPI"]
         direction TB
         F -->|Dynamic Merge| G{FastAPI Endpoints}
-        H[(Pre-Trained GBM Models)] -->|Joblib Load| G
+        H[(Pre-Trained GBM Models)] -->|Joblib| G
         G --> I[Quantile Bouncer Logic]
         G --> J[Z-Score Anomaly Radar]
     end
 
-    subgraph UI [3. Next.js Frontend]
+    subgraph UI ["③ Next.js Dashboard"]
         direction TB
-        I -->|JSON Forecasting| K[What-If Sandbox]
-        J -->|Panic/Hype Alerts| L[Time Machine Engine]
+        I -->|JSON Forecast| K[What-If Sandbox]
+        J -->|Panic / Hype Alerts| L[Time Machine Engine]
         G -->|Narrative Strings| M[Root Cause XAI Modals]
     end
 
-    %% Flow Connections
-    class Pipeline offlineDef;
-    class API backendDef;
-    class UI frontendDef;
+    class Pipeline offlineDef
+    class API backendDef
+    class UI frontendDef
 ```
 
-### The AI Engine & Quantile Regression
-We utilize three concurrent **Gradient Boosting Machine (GBM)** models (`lower_model.pkl`, `median_model.pkl`, `upper_model.pkl`). Instead of predicting a single price, the AI generates a 30-day forward-looking boundary. 
-*   **The Quantile Bouncer:** Machine learning models can occasionally hallucinate, causing confidence intervals to cross. We hardcoded a sorting algorithm inside FastAPI that intercepts raw predictions and mathematically guarantees bounds stay logical (lower < median < upper) before hitting the React frontend.
-
-### Data Engineering & NLP Pipelines
-To prevent API lag from parsing 53,000 text posts live, we built offline Python pipelines under the `backend/` directory using NLTK's VADER. 
-*   **Root Cause Extraction:** Groups posts by date, identifies the absolute highest-upvoted post, and logs its text/URL to serve as the daily "Narrative Driver" for the XAI modal.
-*   **Anomaly Detection (Z-Score):** The API calculates a 7-day rolling mean and standard deviation for the daily emotion score. It runs a live Z-Score calculation to detect statistical anomalies dynamically.
-
-## 4.1 Backend Data Flow (FastAPI & AI Inference)
-This diagram details the internal routing of our FastAPI server, showing how historical datasets and live ML inferences are mathematically processed before hitting the client.
+<details>
+<summary><b>Backend Data Flow (FastAPI & ML Inference)</b></summary>
+<br/>
 
 ```mermaid
 flowchart LR
-    %% Styling
-    classDef routeDef fill:#1e1e2e,stroke:#89b4fa,stroke-width:2px,color:#fff;
-    classDef logicDef fill:#1e1e2e,stroke:#f9e2af,stroke-width:2px,color:#fff;
-    classDef aiDef fill:#1e1e2e,stroke:#f38ba8,stroke-width:2px,color:#fff;
+    classDef routeDef fill:#1e1e2e,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4
+    classDef logicDef fill:#1e1e2e,stroke:#f9e2af,stroke-width:2px,color:#cdd6f4
+    classDef aiDef   fill:#1e1e2e,stroke:#f38ba8,stroke-width:2px,color:#cdd6f4
 
-    subgraph Endpoints [REST API Routes]
-        direction TB
-        GET[/GET /simulation-data/]
-        POST[/POST /forecast/]
+    subgraph Endpoints["REST API Routes"]
+        GET[GET /simulation-data/]
+        POST[POST /forecast/]
     end
 
-    subgraph Logic [Data Engineering Layer]
-        direction TB
+    subgraph Logic["Data Engineering"]
         Merge[Pandas: Dynamic CSV Merge]
-        ZScore[7-Day Z-Score Calculation]
+        ZScore[7-Day Rolling Z-Score]
     end
 
-    subgraph AI[Machine Learning Layer]
-        direction TB
+    subgraph AI["Machine Learning"]
         Joblib[(Load GBM Models)]
         Predict[Generate 30-Day Bounds]
-        Bouncer{Quantile Bouncer Logic}
+        Bouncer{Quantile Bouncer}
     end
 
-    %% Flow
     GET -->|Trigger Time Machine| Merge
-    Merge -->|Roll Mean/Std Dev| ZScore
-    
+    Merge -->|Roll Mean / Std Dev| ZScore
     POST -->|Extract JSON Payload| Joblib
     Joblib -->|Feed Sliders| Predict
     Predict -->|Raw Arrays| Bouncer
-    Bouncer -->|Mathematically Sorted Bounds| Response[JSON Output]
+    Bouncer -->|Sorted Bounds| Response[JSON Output]
     ZScore --> Response
 
-    %% Classes
-    class Endpoints routeDef;
-    class Logic logicDef;
-    class AI aiDef;
+    class Endpoints routeDef
+    class Logic logicDef
+    class AI aiDef
 ```
 
-## 4.2 Frontend Render Pipeline (Next.js)
-To achieve a buttery-smooth 60fps historical playback and instant slider updates without crashing the browser, the frontend relies heavily on React performance hooks and optimized rendering libraries.
+</details>
+
+<details>
+<summary><b>Frontend Render Pipeline (Next.js)</b></summary>
+<br/>
 
 ```mermaid
 flowchart TD
-    %% Styling
-    classDef coreDef fill:#1e1e2e,stroke:#cba6f7,stroke-width:2px,color:#fff;
-    classDef stateDef fill:#1e1e2e,stroke:#a6e3a1,stroke-width:2px,color:#fff;
-    classDef uiDef fill:#1e1e2e,stroke:#94e2d5,stroke-width:2px,color:#fff;
+    classDef coreDef  fill:#1e1e2e,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4
+    classDef stateDef fill:#1e1e2e,stroke:#a6e3a1,stroke-width:2px,color:#cdd6f4
+    classDef uiDef    fill:#1e1e2e,stroke:#94e2d5,stroke-width:2px,color:#cdd6f4
 
-    subgraph Core[Next.js App Router]
-        direction TB
-        Layout[layout.tsx - Global Context]
-        Page[page.tsx - Bento Grid UI]
+    subgraph Core["Next.js App Router"]
+        Layout[layout.tsx — Global Context]
+        Page[page.tsx — Bento Grid UI]
     end
 
-    subgraph State [State & Optimization]
-        direction TB
+    subgraph State["State & Optimization"]
         Debounce[300ms Slider Debounce]
-        Memo[React.useMemo & useCallback]
+        Memo[useMemo & useCallback]
     end
 
-    subgraph Views[Interactive Modals & Charts]
-        direction TB
+    subgraph Views["Interactive Views"]
         Framer[Framer Motion Animations]
-        Recharts[Recharts: SVG Neon Graphs]
+        Recharts[SVG Neon Charts]
         Glass[Glassmorphism XAI Tooltips]
     end
 
-    %% Flow
     Layout --> Page
     Page -->|User Input| Debounce
     Page -->|Timeline Playback| Memo
     Debounce -->|Prevent API Spam| Fetch[FastAPI Fetch]
     Memo -->|Prevent DOM Thrashing| Recharts
     Fetch --> Recharts
-    Page --> Framer
-    Framer --> Glass
+    Page --> Framer --> Glass
 
-    %% Classes
-    class Core coreDef;
-    class State stateDef;
-    class Views uiDef;
+    class Core coreDef
+    class State stateDef
+    class Views uiDef
 ```
 
-## 5. Folder Structure
-
-```text
-Emotion-Forecaster/
-├── assets/                     # Core data dependencies
-│   ├── models/                 # Pre-trained GBM AI models (.pkl)
-│   └── *.csv                   # Cleaned datasets (mega_cap, reddit_wsb, etc.)
-├── backend/                    # Python NLP & Data Engineering Scripts
-│   ├── process_megacaps.py     # Mega-cap sentiment isolation
-│   ├── process_root_cause.py   # Narrative driver extraction
-│   └── process_sectors.py      # Sector sentiment mapping
-├── frontend/                   # Next.js Dashboard
-│   ├── app/                    # Next.js 13+ App Router (page.tsx, layout.tsx)
-│   ├── public/                 # Static frontend assets
-│   ├── globals.css             # Tailwind & Base styling
-│   └── package.json            # Node dependencies
-├── src/                        # FastAPI Server logic (main.py, routers)
-├── .env.example                # Example environment variables
-├── .gitignore                  # Git ignore rules
-└── README.md                   # You are here
-```
+</details>
 
 ---
 
-## 6. Install and Run Instructions
+## Tech Stack
 
-This project requires **Python 3.9+** and **Node.js 18+**. 
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Technology</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Frontend</b></td>
+      <td>React / Next.js 13+</td>
+      <td>App Router, server/client boundary architecture</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>Tailwind CSS + Framer Motion</td>
+      <td>Dark-mode Bento Grid, glassmorphism, spring animations</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>Recharts</td>
+      <td>Cone of Uncertainty area graphs, neon SVG line charts</td>
+    </tr>
+    <tr>
+      <td><b>Backend</b></td>
+      <td>FastAPI (Python)</td>
+      <td>High-perf REST API, automatic JSON serialization</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>Scikit-Learn + Joblib</td>
+      <td>Serving three pre-trained GBM models for Quantile Regression</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>NLTK VADER</td>
+      <td>Distills raw social posts into quantitative sentiment scores</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>Pandas + NumPy</td>
+      <td>On-the-fly merging, rolling stats, Z-Score anomaly detection</td>
+    </tr>
+  </tbody>
+</table>
 
-### Step 1: Clone the Repository
+---
+
+## Installation
+
+> **Prerequisites:** Python 3.9+ · Node.js 18+
+
+### 1 — Clone
+
 ```bash
 git clone https://github.com/mushir2004/Emotion-Forecaster.git
 cd Emotion-Forecaster
 ```
 
-### Step 2: Start the FastAPI Backend
-```bash
-# Create and activate a virtual environment (Recommended)
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+### 2 — Start the Backend
 
-# Install dependencies (assuming you have a requirements.txt at root or src)
+```bash
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Start the FastAPI server
+# Launch the FastAPI server
 uvicorn src.main:app --reload --port 8000
 ```
-*The backend is now running at `http://localhost:8000`.*
 
-### Step 3: Start the React/Next.js Frontend
-Open a **new terminal window**:
+> Backend live at `http://localhost:8000`
+
+### 3 — Start the Frontend
+
 ```bash
+# Open a new terminal
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start the development server
 npm run dev
 ```
-*The frontend is now running at `http://localhost:3000`. Open this link in your browser to view H.I.V.E.*
+
+> Dashboard live at `http://localhost:3000`
 
 ---
 
-## 7. Usage Examples
+## Usage Guide
 
-### Using the Web Application
-1. **The Pitch (Home):** Read the mission statement and understand the data flow.
-2. **The Time Machine:** Navigate to the "Historical Proof" tab. Click the **Play** button on the timeline to watch the 2021 market crash unfold. Watch the live ticker update and click any spike on the graph to view the Reddit post that caused it.
-3. **The Sandbox:** Navigate to the "Predictive Engine". Drag the "Retail Sentiment" slider up to 90% and watch the 30-day forecast dynamically shift to a bullish trajectory without dropping frames.
+| Step | Where | What to do |
+|------|-------|------------|
+| **1** | Home | Read the mission — understand the data flow from raw Reddit to risk forecast |
+| **2** | Time Machine | Hit **Play** and watch the 2021 crash unfold. Click any spike to open the Reddit post that drove it |
+| **3** | Sandbox | Drag **Retail Sentiment** to 90% and watch the 30-day Cone of Uncertainty shift — no dropped frames |
+| **4** | Branch | Pause the timeline on any volatile day → **Branch to Sandbox** to clone conditions into the forecaster |
+
+---
+
+## Limitations & Roadmap
+
+**Current limitations**
+
+- 📦 **Static dataset** — models trained exclusively on the 2021 meme-stock era (53k posts). No live scraping yet.
+- 📉 **Linear sentiment decay** — the Sandbox uses a hardcoded 10% daily decay rate. Real hype dynamics are non-linear.
 
 
 ---
 
-## 8. Limitations and Future Improvements
+## Project Structure
 
-**Current Limitations:**
-*   **Static Historical Data:** The current NLP models were trained strictly on the 53,000-post dataset from the 2021 meme-stock era. It does not currently scrape Reddit or X (Twitter) in live real-time.
-*   **Sentiment Decay:** In the Sandbox, we currently use a hardcoded 10% daily decay rate for sentiment to simulate "cooling hype." In reality, hype decay is non-linear and much more unpredictable.
-
-**Future Improvements:**
-*   **Live Webhooks:** Integrate the official Reddit API to process live VADER sentiment scores instead of historical CSVs.
-*   **Expanded Asset Classes:** Train the sector tug-of-war algorithm to include Crypto and Forex markets, where retail sentiment plays an even larger role.
+```
+Emotion-Forecaster/
+├── assets/
+│   ├── models/                  # Pre-trained GBM models (.pkl)
+│   └── *.csv                    # Cleaned datasets (mega_cap, reddit_wsb, …)
+├── backend/
+│   ├── process_megacaps.py      # Mega-cap sentiment isolation
+│   ├── process_root_cause.py    # Narrative driver extraction
+│   └── process_sectors.py       # Sector sentiment mapping
+├── frontend/
+│   ├── app/                     # Next.js App Router (page.tsx, layout.tsx)
+│   ├── public/                  # Static assets
+│   ├── globals.css              # Tailwind base styles
+│   └── package.json
+├── src/                         # FastAPI server (main.py + routers)
+├── .env.example
+└── README.md
+```
 
 ---
-*Developed for the NatWest Group "Code for Purpose" India Hackathon.*
+
+<div align="center">
+  <br/>
+  <sub>Built for the <b>NatWest Group "Code for Purpose"</b> India Hackathon</sub>
+  <br/>
+  <sub>Traditional math failed in 2021. H.I.V.E. didn't have to.</sub>
+  <br/><br/>
+</div>
