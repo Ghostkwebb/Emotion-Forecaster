@@ -34,6 +34,20 @@ try:
         
     # Load your cleaned historical dataframe for the Time Machine simulation
     historical_df = pd.read_csv("final_training_data.csv") 
+
+    # --- NEW: Load the mega-cap sentiment data ---
+    mega_cap_df = pd.read_csv("mega_cap_sentiment.csv")
+
+    # Ensure Dates are strings so they merge perfectly
+    historical_df['Date'] = historical_df['Date'].astype(str)
+    mega_cap_df['Date'] = mega_cap_df['Date'].astype(str)
+
+    # MERGE MAGIC: This combines both files based on the Date column!
+    merged_df = pd.merge(historical_df, mega_cap_df, on='Date', how='left')
+
+    # Fill any missing days with 0.0 (Neutral sentiment) to prevent API crashes
+    merged_df = merged_df.fillna(0.0)
+
 except Exception as e:
     print(f"Warning: Could not load models or data. Check your file paths! Error: {e}")
 
@@ -112,8 +126,8 @@ def get_historical_simulation():
     try:
         simulation_list = []
         
-        # Sort by date to ensure the "Time Machine" moves forward correctly
-        sorted_df = historical_df.sort_values(by='Date').reset_index(drop=True)
+        # --- NEW: Sort the merged_df instead of the old historical_df ---
+        sorted_df = merged_df.sort_values(by='Date').reset_index(drop=True)
         
         for index, row in sorted_df.iterrows():
             # We use the models to create the 'historical prediction' for this day
@@ -138,7 +152,14 @@ def get_historical_simulation():
                 "predicted_likely": round(sorted_p[1], 2), 
                 "lower_bound": round(sorted_p[0], 2),
                 "upper_bound": round(sorted_p[2], 2),
-                "sentiment_score": round(row['Daily_Emotion_Score'], 2) # Matches your Column B
+                "sentiment_score": round(row['Daily_Emotion_Score'], 2), # Matches your Column B
+                
+                # --- NEW MEGA CAP DATA EXPORT ---
+                "apple_sentiment": round(row['apple_sent'], 3),
+                "tesla_sentiment": round(row['tesla_sent'], 3),
+                "microsoft_sentiment": round(row['msft_sent'], 3),
+                "amazon_sentiment": round(row['amzn_sent'], 3),
+                "nvidia_sentiment": round(row['nvda_sent'], 3)
             })
             
         return {
