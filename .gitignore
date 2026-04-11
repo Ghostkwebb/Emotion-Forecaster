@@ -190,11 +190,6 @@ yarn-error.log*
 out/
 build/
 
-# Datasets
-*.csv
-
-# Machine Learning Models
-*.pkl
 
 # OS Generated Files
 .DS_Store
