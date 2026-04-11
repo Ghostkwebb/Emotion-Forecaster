@@ -11,7 +11,7 @@ import numpy as np
 app = FastAPI(
     title="Emotion-Based Market Forecaster API",
     description="NatWest Hackathon Backend - Sentiment-driven S&P 500 predictions.",
-    version="2.0"
+    version="3.0" # Upgraded to V3 - Final Boss Edition!
 )
 
 app.add_middleware(
@@ -23,48 +23,49 @@ app.add_middleware(
 )
 
 # ==========================================
-# 2. LOAD AI MODELS & DATA (With Radar & XAI)
+# 2. LOAD AI MODELS & DATA (The Master Merge)
 # ==========================================
 try:
     lower_model = joblib.load("lower_model.pkl")
     median_model = joblib.load("median_model.pkl")
     upper_model = joblib.load("upper_model.pkl")
         
+    # Load all FOUR datasets
     historical_df = pd.read_csv("final_training_data.csv") 
     mega_cap_df = pd.read_csv("mega_cap_sentiment.csv")
-    root_cause_df = pd.read_csv("root_cause_data.csv") # --- NEW: Load XAI Data
+    root_cause_df = pd.read_csv("root_cause_data.csv") 
+    sector_df = pd.read_csv("sector_sentiment.csv") # --- NEW: Load Sector Data
 
+    # Ensure Dates are strings
     historical_df['Date'] = historical_df['Date'].astype(str)
     mega_cap_df['Date'] = mega_cap_df['Date'].astype(str)
-    root_cause_df['Date'] = root_cause_df['Date'].astype(str) # --- NEW: Stringify Date
+    root_cause_df['Date'] = root_cause_df['Date'].astype(str) 
+    sector_df['Date'] = sector_df['Date'].astype(str) # --- NEW: Stringify Date
 
-    # Merge all datasets together
+    # MERGE MAGIC: Combine all four!
     merged_df = pd.merge(historical_df, mega_cap_df, on='Date', how='left')
-    merged_df = pd.merge(merged_df, root_cause_df, on='Date', how='left') # --- NEW: Merge XAI
+    merged_df = pd.merge(merged_df, root_cause_df, on='Date', how='left') 
+    merged_df = pd.merge(merged_df, sector_df, on='Date', how='left') # --- NEW: Merge Sectors
 
-    # --- NEW: Clean up missing Reddit posts before filling the rest with 0.0
+    # Clean up missing Reddit posts
     merged_df['top_post_text'] = merged_df['top_post_text'].fillna("No major narrative detected today.")
     merged_df['top_post_upvotes'] = merged_df['top_post_upvotes'].fillna(0)
     merged_df['top_post_url'] = merged_df['top_post_url'].fillna("")
 
+    # Fill remaining missing numbers with 0.0
     merged_df = merged_df.fillna(0.0)
 
     # EARLY WARNING RADAR LOGIC
-    # Sort chronologically so rolling math works correctly
     merged_df = merged_df.sort_values(by='Date').reset_index(drop=True)
-    
-    # Calculate 7-Day Rolling Mean and Standard Deviation for Sentiment
     merged_df['Rolling_Mean'] = merged_df['Daily_Emotion_Score'].rolling(window=7, min_periods=1).mean()
     merged_df['Rolling_Std'] = merged_df['Daily_Emotion_Score'].rolling(window=7, min_periods=1).std().fillna(0)
     
-    # Calculate Z-Score (safely handling division by zero)
     merged_df['Z_Score'] = np.where(
         merged_df['Rolling_Std'] > 0,
         (merged_df['Daily_Emotion_Score'] - merged_df['Rolling_Mean']) / merged_df['Rolling_Std'],
         0
     )
     
-    # Tag anomalies based on Z-Score
     merged_df['Anomaly_Status'] = "NORMAL"
     merged_df.loc[merged_df['Z_Score'] <= -2.0, 'Anomaly_Status'] = "CRITICAL_FEAR"
     merged_df.loc[merged_df['Z_Score'] >= 2.0, 'Anomaly_Status'] = "EXTREME_HYPE"
@@ -88,7 +89,6 @@ class ForecastRequest(BaseModel):
 @app.post("/forecast")
 def generate_forecast(req: ForecastRequest):
     forecast_results = []
-    
     simulated_price_median = req.current_price
     sim_sentiment = req.current_sentiment
     sim_hype = req.current_hype_volume
@@ -163,11 +163,17 @@ def get_historical_simulation():
                 "amazon_sentiment": round(row['amzn_sent'], 3),
                 "nvidia_sentiment": round(row['nvda_sent'], 3),
 
+                # --- NEW SECTOR TUG-OF-WAR ---
+                "tech_sector": round(row['tech_sector'], 3),
+                "ev_sector": round(row['ev_sector'], 3),
+                "finance_sector": round(row['finance_sector'], 3),
+                "meme_sector": round(row['meme_sector'], 3),
+
                 # EARLY WARNING RADAR
                 "anomaly_status": str(row['Anomaly_Status']),
                 "z_score": round(row['Z_Score'], 2),
 
-                # --- NEW ROOT CAUSE XAI ---
+                # ROOT CAUSE XAI
                 "root_cause_text": str(row['top_post_text']),
                 "root_cause_upvotes": int(row['top_post_upvotes']),
                 "root_cause_url": str(row['top_post_url'])
