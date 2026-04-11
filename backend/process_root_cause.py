@@ -2,7 +2,7 @@ import pandas as pd
 
 print("1. Loading raw Reddit data...")
 # REPLACE with your actual raw data filename!
-df_raw = pd.read_csv('reddit_wsb.csv')
+df_raw = pd.read_csv('assets/reddit_wsb.csv')
 
 print("2. Fixing Dates and Text...")
 # Fix the dates to match our main API

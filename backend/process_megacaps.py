@@ -6,7 +6,7 @@ nltk.download('vader_lexicon', quiet=True)
 
 print("1. Loading raw data...")
 # REPLACE with your actual raw data filename!
-df_raw = pd.read_csv('reddit_wsb.csv') 
+df_raw = pd.read_csv('assets/reddit_wsb.csv') 
 print(f"   -> Loaded {len(df_raw)} rows.")
 
 print("2. Fixing Dates...")

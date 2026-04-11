@@ -26,15 +26,15 @@ app.add_middleware(
 # 2. LOAD AI MODELS & DATA (The Master Merge)
 # ==========================================
 try:
-    lower_model = joblib.load("lower_model.pkl")
-    median_model = joblib.load("median_model.pkl")
-    upper_model = joblib.load("upper_model.pkl")
+    lower_model = joblib.load("assets/models/lower_model.pkl")
+    median_model = joblib.load("assets/models/median_model.pkl")
+    upper_model = joblib.load("assets/models/upper_model.pkl")
         
     # Load all FOUR datasets
-    historical_df = pd.read_csv("final_training_data.csv") 
-    mega_cap_df = pd.read_csv("mega_cap_sentiment.csv")
-    root_cause_df = pd.read_csv("root_cause_data.csv") 
-    sector_df = pd.read_csv("sector_sentiment.csv") # --- NEW: Load Sector Data
+    historical_df = pd.read_csv("assets/final_training_data.csv") 
+    mega_cap_df = pd.read_csv("assets/mega_cap_sentiment.csv")
+    root_cause_df = pd.read_csv("assets/root_cause_data.csv") 
+    sector_df = pd.read_csv("assets/sector_sentiment.csv") # --- NEW: Load Sector Data
 
     # Ensure Dates are strings
     historical_df['Date'] = historical_df['Date'].astype(str)
