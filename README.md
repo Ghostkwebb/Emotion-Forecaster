@@ -23,7 +23,7 @@
 
   <br/>
 
-  [**→ View Demo**](#7-usage-guide) &nbsp;·&nbsp; [**→ Quick Start**](#6-installation) &nbsp;·&nbsp; [**→ Architecture**](#4-architecture)
+[**→ View Demo**](https://emotion-forecaster.vercel.app/) &nbsp;·&nbsp; [**→ Quick Start**](#installation) &nbsp;·&nbsp; [**→ Architecture**](#architecture)
 
   <br/>
 
