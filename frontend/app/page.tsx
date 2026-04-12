@@ -39,7 +39,7 @@ export default function MarketForecasterDashboard() {
       setIsFetching(true);
       try {
         setError(null);
-        const res = await fetch("http://127.0.0.1:8000/forecast", {
+        const res = await fetch("https://hive-backend-yp5d.onrender.com/forecast", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ current_price: price, current_sentiment: sentiment, current_hype_volume: hype, days_to_forecast: 30 }),
@@ -61,7 +61,7 @@ export default function MarketForecasterDashboard() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/simulation-data");
+        const res = await fetch("https://hive-backend-yp5d.onrender.com/simulation-data");
         if (res.ok) {
           const data = await res.json();
           setHistoryData(data.simulation_data);

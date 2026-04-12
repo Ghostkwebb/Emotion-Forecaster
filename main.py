@@ -35,7 +35,7 @@ try:
     historical_df = pd.read_csv("assets/final_training_data.csv") 
     mega_cap_df = pd.read_csv("assets/mega_cap_sentiment.csv")
     root_cause_df = pd.read_csv("assets/root_cause_data.csv") 
-    sector_df = pd.read_csv("assets/sector_sentiment.csv") # --- NEW: Load Sector Data
+    sector_df = pd.read_csv("assets/sector_sentiment.csv")
 
     # Ensure Dates are strings
     historical_df['Date'] = historical_df['Date'].astype(str)
