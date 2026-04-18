@@ -6,26 +6,30 @@ import {
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from "recharts";
-import { AlertTriangle, Activity, Play, Info, Moon, Sun, RefreshCw, Pause, StepForward, GitBranch, Loader2, MousePointerClick, BarChart3, Hexagon, Zap, TrendingUp, Sparkles, Shield, Brain, Sliders, ArrowRight } from "lucide-react";
+import { AlertTriangle, Activity, Play, Info, Moon, Sun, RefreshCw, Pause, StepForward, GitBranch, Loader2, MousePointerClick, BarChart3, Hexagon, Zap, TrendingUp, Sparkles, Shield, Brain, Sliders, ArrowRight, Terminal, Database, ExternalLink, Target, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function MarketForecasterDashboard() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
-  const [darkMode, setDarkMode] = useState(true); // Always start dark for the premium vibe
+  const [darkMode, setDarkMode] = useState(true);
 
-  const [price, setPrice] = useState(4500);
-  const [sentiment, setSentiment] = useState(0);
+  // Simulation / Sandbox State
+  const [price, setPrice] = useState(7126.06);
+  const [sentiment, setSentiment] = useState(0.3);
   const [hype, setHype] = useState(500000);
 
   const [forecastData, setForecastData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isFetching, setIsFetching] = useState(false);
+  const [isFetchingForecast, setIsFetchingForecast] = useState(false);
+
+  // Live Sync State (NEW)
+  const [liveSyncData, setLiveSyncData] = useState<any>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [chartKey, setChartKey] = useState(0);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [activeTab, setActiveTab] = useState("home"); // <-- Start on the new Landing Page
+  const [activeTab, setActiveTab] = useState("home");
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [isPlayingHistory, setIsPlayingHistory] = useState(false);
@@ -34,34 +38,60 @@ export default function MarketForecasterDashboard() {
   const [flashDanger, setFlashDanger] = useState(false);
   const [narrative, setNarrative] = useState<{ date: string, text: string, upvotes: number } | null>(null);
 
-  useEffect(() => {
-    const fetchForecast = async () => {
-      setIsFetching(true);
-      try {
-        setError(null);
-        const res = await fetch("https://hive-backend-yp5d.onrender.com/forecast", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ current_price: price, current_sentiment: sentiment, current_hype_volume: hype, days_to_forecast: 30 }),
-        });
+  // MANUAL FORECAST TRIGGER (Replaces auto-updating useEffect)
+  const runForecastSimulation = async () => {
+    setIsFetchingForecast(true);
+    setChartKey(prev => prev + 1); // Triggers re-render animation
+    try {
+      setError(null);
+      const res = await fetch("https://hive-api.onrender.com/forecast", { // MAKE SURE THIS IS YOUR BACKEND URL
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_price: price, current_sentiment: sentiment, current_hype_volume: hype, days_to_forecast: 30 }),
+      });
 
-        if (!res.ok) throw new Error("API fail");
-        const data = await res.json();
-        setForecastData(data.forecast);
-      } catch (err) {
-        setError("API Offline: Run Python FastAPI backend on port 8000.");
-      } finally {
-        setIsFetching(false);
-      }
-    };
-    const timeoutId = setTimeout(fetchForecast, 300);
-    return () => clearTimeout(timeoutId);
-  }, [price, sentiment, hype]);
+      if (!res.ok) throw new Error("Forecast API fail");
+      const data = await res.json();
+      setForecastData(data.forecast);
+    } catch (err) {
+      setError("API Offline: Ensure backend is running.");
+    } finally {
+      setIsFetchingForecast(false);
+    }
+  };
 
+  // LIVE ETL PIPELINE SYNC (NEW)
+  const initiateLiveSync = async () => {
+    setIsSyncing(true);
+    try {
+      // If you hosted it on Render, change this URL!
+      const res = await fetch("http://127.0.0.1:8000/live-sync");
+      if (!res.ok) throw new Error("Failed to sync live data");
+      const data = await res.json();
+
+      // Update UI with Live Data
+      setLiveSyncData(data);
+
+      // Auto-fill the Sandbox Sliders with the live numbers
+      setPrice(data.latest_actual_price);
+      setSentiment(data.live_sentiment_score);
+
+      // Automatically run the first simulation
+      setTimeout(() => runForecastSimulation(), 500);
+
+    } catch (err) {
+      console.error(err);
+      setError("Live Sync Failed. Ensure backend /live-sync endpoint is available.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Fetch History on Load
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch("https://hive-backend-yp5d.onrender.com/simulation-data");
+        const res = await fetch("http://127.0.0.1:8000/simulation-data"); // UPDATE TO LIVE URL IF NEEDED
         if (res.ok) {
           const data = await res.json();
           setHistoryData(data.simulation_data);
@@ -73,6 +103,7 @@ export default function MarketForecasterDashboard() {
     fetchHistory();
   }, []);
 
+  // History Playback Engine
   useEffect(() => {
     if (isPlayingHistory && historyIndex < historyData.length - 1) {
       const timer = setTimeout(() => setHistoryIndex((prev) => prev + 1), 120);
@@ -82,6 +113,7 @@ export default function MarketForecasterDashboard() {
     }
   }, [isPlayingHistory, historyIndex, historyData]);
 
+  // Radar Anomaly Engine
   useEffect(() => {
     if (activeTab !== "history" || historyData.length === 0) return;
     const current = historyData[historyIndex];
@@ -106,22 +138,6 @@ export default function MarketForecasterDashboard() {
   }, [historyIndex, historyData, activeTab]);
 
   const mappedData = useMemo(() => forecastData.map((d) => ({ ...d, uncertainty: [d.lower_bound, d.upper_bound] })), [forecastData]);
-
-  const startLiveSimulation = () => {
-    setChartKey((prev) => prev + 1);
-    setIsSimulating(true);
-    setTimeout(() => setIsSimulating(false), 2500);
-  };
-
-  const branchToSandbox = () => {
-    const current = historyData[historyIndex];
-    if (current) {
-      setPrice(current.actual_price);
-      setSentiment(current.sentiment_score);
-    }
-    setIsPlayingHistory(false);
-    setActiveTab("sandbox");
-  };
 
   const handleThemeToggle = (e: React.MouseEvent) => {
     const nextIsDark = !darkMode;
@@ -193,15 +209,23 @@ export default function MarketForecasterDashboard() {
     { subject: 'Meme Stocks', value: normalizeForRadar(currentFrame.meme_sector), raw: currentFrame.meme_sector || 0 },
   ];
 
-  // Data for the Ticker
   const tickerString = currentFrame.date
     ? `H.I.V.E. LIVE SYNC • TSLA SENTIMENT: ${currentFrame.tesla_sentiment > 0 ? "+" : ""}${(currentFrame.tesla_sentiment || 0).toFixed(2)} (${currentFrame.tesla_sentiment > 0 ? 'HYPE' : 'COOLING'}) • AAPL SENTIMENT: ${currentFrame.apple_sentiment > 0 ? "+" : ""}${(currentFrame.apple_sentiment || 0).toFixed(2)} • MEME SECTOR RADAR: ${currentFrame.anomaly_status || "NORMAL"} • SPY PROJECTION: ${forecastData[29]?.likely_price > price ? "BULLISH" : "BEARISH"} `
     : `H.I.V.E. LIVE SYNC • TSLA SENTIMENT: +0.81 (HYPE) • AAPL SENTIMENT: -0.21 (COOLING) • MEME SECTOR RADAR: NORMAL • ESTABLISHING SECURE CONNECTION TO DATA STREAM... `;
 
-  return (
-    <div className={`min-h-screen font-sans transition-colors duration-500 overflow-x-hidden ${darkMode ? "bg-[#050608] text-slate-100" : "bg-[#F3F4F6] text-slate-900"}`}>
+  // DYNAMIC BACKGROUND COLOR BASED ON SENTIMENT SLIDER
+  const dynamicBg = sentiment > 0
+    ? `radial-gradient(circle at 50% 100%, rgba(0, 255, 136, ${Math.abs(sentiment) * 0.15}), transparent 70%)`
+    : `radial-gradient(circle at 50% 100%, rgba(255, 51, 102, ${Math.abs(sentiment) * 0.15}), transparent 70%)`;
 
-      {/* CSS for View Transitions & Ticker */}
+  return (
+    <div className={`min-h-screen font-sans transition-colors duration-500 overflow-x-hidden relative ${darkMode ? "bg-[#050608] text-slate-100" : "bg-[#F3F4F6] text-slate-900"}`}>
+
+      {/* DYNAMIC BLOOMBERG TERMINAL GLOW */}
+      {activeTab === "sandbox" && (
+        <div className="absolute inset-0 pointer-events-none transition-all duration-700 ease-out z-0" style={{ background: dynamicBg }}></div>
+      )}
+
       <style dangerouslySetInnerHTML={{
         __html: `
         ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
@@ -209,7 +233,6 @@ export default function MarketForecasterDashboard() {
         .animate-marquee { animation: infinite-scroll 25s linear infinite; }
       `}} />
 
-      {/* SVG FILTERS FOR NEON GLOW */}
       <svg className="w-0 h-0 absolute">
         <defs>
           <filter id="neonGlowPurple" x="-20%" y="-20%" width="140%" height="140%">
@@ -224,7 +247,7 @@ export default function MarketForecasterDashboard() {
       </svg>
 
       {/* LIVE BLOOMBERG-STYLE TICKER */}
-      <div className={`w-full overflow-hidden border-b flex whitespace-nowrap py-2 z-50 ${darkMode ? "bg-[#0A0C10] border-white/5 text-[#00FF88]" : "bg-slate-900 border-black text-[#00FF88]"}`}>
+      <div className={`w-full overflow-hidden border-b flex whitespace-nowrap py-2 relative z-50 ${darkMode ? "bg-[#0A0C10] border-white/5 text-[#00FF88]" : "bg-slate-900 border-black text-[#00FF88]"}`}>
         <div className="animate-marquee flex w-max text-xs font-mono font-bold tracking-widest">
           <span className="mx-8">{tickerString}</span>
           <span className="mx-8">{tickerString}</span>
@@ -233,7 +256,7 @@ export default function MarketForecasterDashboard() {
         </div>
       </div>
 
-      <div className="p-4 md:p-8 max-w-[1500px] mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1500px] mx-auto space-y-6 relative z-10">
 
         {/* PREMIUM HEADER / NAVBAR */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8 mt-4">
@@ -272,7 +295,7 @@ export default function MarketForecasterDashboard() {
                   {activeTab === tab && (
                     <motion.div layoutId="activeTab" className={`absolute inset-0 rounded-full shadow-sm -z-10 ${darkMode ? "bg-[#1A1D24] border border-white/5" : "bg-slate-100"}`} transition={{ type: "spring", stiffness: 300, damping: 25 }} />
                   )}
-                  {tab === 'home' ? 'Overview' : tab === 'history' ? 'Historical Proof' : 'Future Sandbox'}
+                  {tab === 'home' ? 'Overview' : tab === 'history' ? 'Historical Proof' : 'Live Sync Sandbox'}
                 </button>
               ))}
             </div>
@@ -294,35 +317,6 @@ export default function MarketForecasterDashboard() {
         <AnimatePresence>
           {flashDanger && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 pointer-events-none z-50 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#FF3366]/20 to-transparent" />}
         </AnimatePresence>
-
-        {/* XAI NARRATIVE POPUP */}
-        <AnimatePresence>
-          {narrative && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setNarrative(null)}>
-              <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} onClick={e => e.stopPropagation()} className={`w-full max-w-lg p-8 rounded-[32px] shadow-2xl border ${darkMode ? "bg-[#111318] border-white/10" : "bg-white border-slate-200"}`}>
-                <div className="w-14 h-14 rounded-[20px] bg-gradient-to-br from-[#7209B7] to-[#4361EE] flex items-center justify-center mb-6 shadow-lg">
-                  <Info className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">AI Root Cause Analysis</h3>
-                <p className={`text-sm mb-6 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>The social narrative driving the market logic.</p>
-
-                <div className={`p-6 rounded-[24px] border border-white/5 mb-6 relative overflow-hidden ${darkMode ? "bg-[#1A1D24]" : "bg-slate-50"}`}>
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[#7209B7] to-[#4361EE]"></div>
-                  <p className={`italic leading-relaxed ${darkMode ? "text-slate-200" : "text-slate-800"}`}>"{narrative.text}"</p>
-                </div>
-
-                <div className={`flex justify-between items-center text-sm font-bold px-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                  <span>{narrative.date}</span>
-                  <span className="flex items-center text-[#FCAF45] bg-[#FCAF45]/10 px-4 py-1.5 rounded-full border border-[#FCAF45]/20">🔥 {narrative.upvotes} Upvotes</span>
-                </div>
-                <button onClick={() => setNarrative(null)} className={`mt-8 w-full py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-95 ${darkMode ? "bg-white text-black" : "bg-slate-900 text-white"}`}>
-                  Acknowledge
-                </button>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
 
         {/* ================= TAB 0: HOME / LANDING PAGE ================= */}
         {activeTab === "home" && (
@@ -349,7 +343,7 @@ export default function MarketForecasterDashboard() {
                   <Play className="w-5 h-5 mr-2 fill-current" /> Launch 2021 Simulation
                 </button>
                 <button onClick={() => setActiveTab('sandbox')} className={`w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center border-2 transition-all hover:-translate-y-1 active:scale-95 text-lg ${darkMode ? "border-white/10 hover:border-white/20 bg-[#111318] text-white" : "border-slate-300 hover:border-slate-400 bg-white text-slate-900"}`}>
-                  <Sliders className="w-5 h-5 mr-2" /> Enter Prediction Sandbox
+                  <Sliders className="w-5 h-5 mr-2" /> Enter Live Sandbox
                 </button>
               </div>
             </div>
@@ -386,45 +380,16 @@ export default function MarketForecasterDashboard() {
 
               <Card className={`group hover:-translate-y-2 transition-all duration-300 ${darkMode ? "bg-[#111318]" : "bg-white"}`}>
                 <div className="w-16 h-16 rounded-[20px] bg-[#4361EE]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <TrendingUp className="w-8 h-8 text-[#4361EE]" />
+                  <Database className="w-8 h-8 text-[#4361EE]" />
                 </div>
-                <h4 className="text-xl font-bold mb-3">What-If Sandbox</h4>
+                <h4 className="text-xl font-bold mb-3">Live ETL Pipeline</h4>
                 <p className={`leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
-                  Generate quantile-bounded 30-day forward projections. Inject custom hype and sentiment scenarios to stress-test your portfolio against Black Swan internet events.
+                  Instantly sync with live market data. Generate quantile-bounded 30-day forward projections and stress-test your portfolio against Black Swan internet events.
                 </p>
               </Card>
             </div>
-
-            {/* ARCHITECTURE FLEX */}
-            <div className="mb-24 flex flex-col items-center">
-              <h3 className="text-2xl font-bold mb-12 text-center">Powered by Institutional-Grade Architecture</h3>
-
-              <div className="flex flex-col md:flex-row flex-wrap items-center justify-center gap-4 text-sm font-mono font-bold text-center">
-                <div className={`px-6 py-4 rounded-2xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>
-                  53k Raw Posts
-                </div>
-                <ArrowRight className="w-6 h-6 text-[#4361EE] hidden md:block" />
-                <div className={`px-6 py-4 rounded-2xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>
-                  VADER NLP Engine
-                </div>
-                <ArrowRight className="w-6 h-6 text-[#4361EE] hidden md:block" />
-                <div className={`px-6 py-4 rounded-2xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>
-                  Quantile Regression
-                </div>
-                <ArrowRight className="w-6 h-6 text-[#4361EE] hidden md:block" />
-                <div className={`px-6 py-4 rounded-2xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>
-                  FastAPI Backend
-                </div>
-                <ArrowRight className="w-6 h-6 text-[#4361EE] hidden md:block" />
-                <div className={`px-6 py-4 rounded-2xl border-2 shadow-lg ${darkMode ? "bg-[#4361EE]/10 text-[#4361EE] border-[#4361EE]/50" : "bg-blue-50 text-blue-700 border-blue-300"}`}>
-                  React / Next.js UI
-                </div>
-              </div>
-            </div>
-
           </motion.div>
         )}
-
 
         {/* ================= TAB 1: HISTORY ================= */}
         {activeTab === "history" && (
@@ -447,7 +412,6 @@ export default function MarketForecasterDashboard() {
                       <YAxis domain={['auto', 'auto']} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
                       <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "20px", color: darkMode ? '#fff' : '#000', padding: "16px" }} itemStyle={{ fontWeight: 600 }} />
                       <Legend verticalAlign="top" height={40} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v}</span>} />
-
                       <Line type="monotone" dataKey="actual_price" stroke={darkMode ? "#475569" : "#94a3b8"} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: darkMode ? "#475569" : "#94a3b8", strokeWidth: 0, cursor: "pointer", onClick: (e: any, p: any) => handleChartClick(p) }} name="Actual Market" isAnimationActive={!isPlayingHistory} animationDuration={300} />
                       <Line type="monotone" dataKey="predicted_likely" stroke="#7209B7" filter={darkMode ? "url(#neonGlowPurple)" : ""} strokeWidth={4} dot={false} activeDot={{ r: 8, fill: "#7209B7", strokeWidth: 0, cursor: "pointer", onClick: (e: any, p: any) => handleChartClick(p) }} name="AI Prediction" isAnimationActive={!isPlayingHistory} animationDuration={300} />
                     </ComposedChart>
@@ -520,18 +484,7 @@ export default function MarketForecasterDashboard() {
                       <p className="font-mono font-bold text-base">{currentFrame.z_score || "--"}</p>
                     </div>
                   </div>
-
-                  {currentFrame.root_cause_text && (
-                    <button onClick={() => setNarrative({ date: currentFrame.date, text: currentFrame.root_cause_text, upvotes: currentFrame.root_cause_upvotes })} className="mt-6 w-full py-3 rounded-xl bg-[#4361EE]/10 text-[#4361EE] font-bold text-sm hover:bg-[#4361EE]/20 transition-all flex items-center justify-center">
-                      <Info className="w-4 h-4 mr-2" /> View Root Cause
-                    </button>
-                  )}
                 </div>
-
-                {/* BRANCH TO SANDBOX BUTTON */}
-                <button onClick={branchToSandbox} className="w-full py-4 rounded-2xl font-bold flex items-center justify-center bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_8px_20px_-6px_rgba(67,97,238,0.4)] hover:-translate-y-1 transition-all active:scale-95">
-                  <GitBranch className="w-5 h-5 mr-2" /> Branch to Sandbox
-                </button>
               </Card>
 
               <Card className="h-[400px] shrink-0 flex flex-col p-0 overflow-hidden border border-[#FF3366]/20">
@@ -562,111 +515,157 @@ export default function MarketForecasterDashboard() {
           </motion.div>
         )}
 
-        {/* ================= TAB 2: SANDBOX ================= */}
+        {/* ================= TAB 2: LIVE SYNC & SANDBOX ================= */}
         {activeTab === "sandbox" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col gap-6">
+          <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col gap-6 relative z-10">
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <Card className="xl:col-span-2 min-h-[450px] flex flex-col">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold flex items-center"><TrendingUp className="w-5 h-5 mr-2 text-[#4361EE]" /> 30-Day Forward Trajectory</h2>
-                  {isFetching && <Loader2 className="w-5 h-5 animate-spin text-[#4361EE]" />}
+            {/* STEP 1: LIVE ETL PIPELINE */}
+            {!liveSyncData && (
+              <Card className="flex flex-col items-center justify-center min-h-[500px] text-center py-16">
+                <div className="w-24 h-24 bg-[#00FF88]/10 rounded-[30px] flex items-center justify-center mb-8 border border-[#00FF88]/30 shadow-[0_0_30px_rgba(0,255,136,0.2)]">
+                  <Database className="w-12 h-12 text-[#00FF88]" />
                 </div>
-
-                <div className={`w-full flex-1 transition-opacity duration-300 ${isFetching ? "opacity-50" : "opacity-100"}`}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart key={chartKey} data={mappedData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorUncertainty" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#4361EE" stopOpacity={darkMode ? 0.4 : 0.2} />
-                          <stop offset="95%" stopColor={darkMode ? "#4361EE" : "#4361EE"} stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#2A2E37" : "#e2e8f0"} opacity={0.6} />
-                      <XAxis dataKey="day" type="number" domain={[1, 30]} tickCount={6} tickFormatter={(t) => `Day ${t}`} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} tickMargin={10} />
-                      <YAxis domain={[yAxisMin, yAxisMax]} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
-                      <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "20px", color: darkMode ? '#fff' : '#000', padding: "16px" }} formatter={(value: any, name: any) => [Array.isArray(value) ? `[$${value[0]}, $${value[1]}]` : `$${value}`, name]} labelFormatter={(label) => `Day ${label}`} itemStyle={{ fontWeight: 600 }} />
-                      <Legend verticalAlign="top" height={40} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v}</span>} />
-                      <Area type="monotone" dataKey="uncertainty" stroke="none" fill="url(#colorUncertainty)" name="90% Confidence Bounds" isAnimationActive={true} animationDuration={isSimulating ? 2000 : 500} animationEasing="ease-out" />
-                      <Line type="monotone" dataKey="likely_price" stroke="#4361EE" filter={darkMode ? "url(#neonGlowBlue)" : ""} strokeWidth={5} dot={false} activeDot={{ r: 8, fill: "#4361EE", strokeWidth: 0 }} name="Median Forecast" isAnimationActive={true} animationDuration={isSimulating ? 2000 : 500} animationEasing="ease-out" />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
+                <h2 className="text-3xl font-black mb-4">Live Database Synchronization</h2>
+                <p className={`max-w-xl text-lg mb-10 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                  Initialize the ETL pipeline to scrape real-time market metrics and social sentiment from Yahoo Finance to power the Live Sandbox.
+                </p>
+                <button
+                  onClick={initiateLiveSync}
+                  disabled={isSyncing}
+                  className={`px-10 py-5 rounded-[24px] text-lg font-bold flex items-center justify-center transition-all transform active:scale-95 ${isSyncing ? "bg-[#1A1D24] text-slate-500 border border-white/10" : "bg-gradient-to-r from-[#00FF88] to-[#00BFFF] text-slate-900 shadow-[0_0_40px_rgba(0,255,136,0.4)] hover:-translate-y-1 hover:shadow-[0_0_60px_rgba(0,255,136,0.6)]"}`}
+                >
+                  {isSyncing ? (
+                    <><RefreshCw className="w-6 h-6 mr-3 animate-spin" /> Fetching Live Market Data...</>
+                  ) : (
+                    <><Terminal className="w-6 h-6 mr-3" /> Initiate Live ETL Pipeline</>
+                  )}
+                </button>
               </Card>
+            )}
 
-              <div className="flex flex-col gap-6">
-                <Card className={`flex-1 flex flex-col justify-center relative overflow-hidden ${darkMode ? "bg-gradient-to-br from-[#1A1D24] to-[#111318]" : "bg-white"}`}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#4361EE]/10 rounded-full blur-3xl"></div>
-                  <h4 className="font-bold flex items-center mb-4 text-lg"><Sparkles className="w-5 h-5 mr-2 text-[#4361EE]" /> AI Projection</h4>
+            {/* STEP 2: LOADED SANDBOX DASHBOARD */}
+            {liveSyncData && (
+              <>
+                {/* LIVE MARKET PULSE CARDS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className={`border ${darkMode ? "border-[#00FF88]/30 bg-[#00FF88]/5" : "border-[#00FF88]/50 bg-[#00FF88]/10"}`}>
+                    <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Live Asset Price</p>
+                    <p className="text-4xl font-mono font-black">${liveSyncData.latest_actual_price.toFixed(2)}</p>
+                  </Card>
 
-                  {forecastData.length === 30 ? (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                        <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Target Price</span>
-                        <span className="text-3xl font-mono font-bold">${forecastData[29].likely_price.toFixed(2)}</span>
+                  <Card className={`border ${liveSyncData.live_sentiment_score >= 0 ? (darkMode ? "border-[#00FF88]/30 bg-[#00FF88]/5" : "border-[#00FF88]/50 bg-[#00FF88]/10") : (darkMode ? "border-[#FF3366]/30 bg-[#FF3366]/5" : "border-[#FF3366]/50 bg-[#FF3366]/10")}`}>
+                    <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Live Sentiment Score</p>
+                    <p className={`text-4xl font-mono font-black ${liveSyncData.live_sentiment_score >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>
+                      {liveSyncData.live_sentiment_score > 0 ? "+" : ""}{liveSyncData.live_sentiment_score.toFixed(3)}
+                    </p>
+                  </Card>
+                </div>
+
+                {/* AI RISK BOUNDS DASHBOARD */}
+                <Card className="flex flex-col md:flex-row items-center justify-between p-8 md:p-12 text-center bg-gradient-to-b from-transparent to-black/20">
+                  <div className="w-full md:w-1/3 mb-6 md:mb-0">
+                    <p className="text-sm font-bold text-[#FF3366] uppercase tracking-widest mb-2 flex items-center justify-center"><ArrowDownRight className="w-4 h-4 mr-1" /> Lower Bound</p>
+                    <p className="text-3xl font-mono font-bold text-slate-400">${liveSyncData.live_forecast.lower_bound.toFixed(2)}</p>
+                  </div>
+
+                  <div className="w-full md:w-1/3 mb-6 md:mb-0 scale-110">
+                    <p className="text-sm font-bold text-[#4361EE] uppercase tracking-widest mb-2 flex items-center justify-center"><Target className="w-5 h-5 mr-2" /> Target Price</p>
+                    <p className="text-5xl font-mono font-black">${liveSyncData.live_forecast.target_price.toFixed(2)}</p>
+                  </div>
+
+                  <div className="w-full md:w-1/3">
+                    <p className="text-sm font-bold text-[#00FF88] uppercase tracking-widest mb-2 flex items-center justify-center"><ArrowUpRight className="w-4 h-4 mr-1" /> Upper Bound</p>
+                    <p className="text-3xl font-mono font-bold text-slate-400">${liveSyncData.live_forecast.upper_bound.toFixed(2)}</p>
+                  </div>
+                </Card>
+
+                {/* ROOT CAUSE XAI BANNER */}
+                <a href={liveSyncData.root_cause_url} target="_blank" rel="noopener noreferrer" className="block w-full">
+                  <Card className={`group cursor-pointer border ${darkMode ? "border-[#BF5CFF]/30 bg-gradient-to-r from-[#BF5CFF]/10 to-transparent" : "border-[#BF5CFF]/50 bg-gradient-to-r from-[#BF5CFF]/20 to-transparent"}`}>
+                    <div className="flex items-start md:items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-[#BF5CFF] uppercase tracking-widest mb-2 flex items-center">
+                          <Brain className="w-4 h-4 mr-2" /> AI Narrative Detection
+                        </p>
+                        <h3 className="text-lg md:text-xl font-bold group-hover:underline decoration-[#BF5CFF] underline-offset-4">
+                          "{liveSyncData.root_cause_headline}"
+                        </h3>
                       </div>
-                      <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                        <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Trajectory</span>
-                        <span className={`text-xl font-bold px-3 py-1 rounded-xl ${forecastData[29].likely_price > forecastData[0].likely_price ? "bg-[#00FF88]/10 text-[#00FF88]" : "bg-[#FF3366]/10 text-[#FF3366]"}`}>
-                          {forecastData[29].likely_price > forecastData[0].likely_price ? "BULLISH" : "BEARISH"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 pt-2">
-                        <div>
-                          <p className={`text-xs mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Lower Bound</p>
-                          <p className="font-mono font-bold">${forecastData[29].lower_bound.toFixed(0)}</p>
-                        </div>
-                        <div>
-                          <p className={`text-xs mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Upper Bound</p>
-                          <p className="font-mono font-bold">${forecastData[29].upper_bound.toFixed(0)}</p>
-                        </div>
+                      <div className="hidden md:flex w-12 h-12 rounded-full bg-[#BF5CFF]/20 items-center justify-center group-hover:scale-110 transition-transform">
+                        <ExternalLink className="w-5 h-5 text-[#BF5CFF]" />
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#4361EE]" /></div>
-                  )}
-                </Card>
+                  </Card>
+                </a>
 
-                <button onClick={startLiveSimulation} disabled={isSimulating} className={`w-full py-5 rounded-[24px] font-bold text-lg flex items-center justify-center transition-all duration-300 transform active:scale-95 shadow-lg ${isSimulating ? darkMode ? "bg-[#1A1D24] text-slate-500" : "bg-slate-200 text-slate-400" : "bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_0_30px_rgba(67,97,238,0.5)]"}`}>
-                  {isSimulating ? <><RefreshCw className="w-6 h-6 mr-3 animate-spin" /> Rendering Matrix...</> : <><Zap className="w-6 h-6 mr-3" /> Render Forecast</>}
-                </button>
-              </div>
-            </div>
+                {/* THE STRESS TESTER (SANDBOX) */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
+                  {/* CHART */}
+                  <Card className="xl:col-span-2 min-h-[450px] flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-bold flex items-center"><TrendingUp className="w-5 h-5 mr-2 text-[#4361EE]" /> 30-Day Forward Trajectory</h2>
+                      {isFetchingForecast && <Loader2 className="w-5 h-5 animate-spin text-[#4361EE]" />}
+                    </div>
 
-            <div className="flex flex-col">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="flex flex-col justify-between h-48 bg-gradient-to-br from-[#7209B7]/5 to-transparent">
-                  <div>
-                    <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Starting Price</p>
-                    <p className="text-3xl font-mono font-bold">${price}</p>
+                    <div className={`w-full flex-1 transition-opacity duration-300 ${isFetchingForecast ? "opacity-50" : "opacity-100"}`}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart key={chartKey} data={mappedData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorUncertainty" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#4361EE" stopOpacity={darkMode ? 0.4 : 0.2} />
+                              <stop offset="95%" stopColor={darkMode ? "#4361EE" : "#4361EE"} stopOpacity={0.0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#2A2E37" : "#e2e8f0"} opacity={0.6} />
+                          <XAxis dataKey="day" type="number" domain={[1, 30]} tickCount={6} tickFormatter={(t) => `Day ${t}`} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} tickMargin={10} />
+                          <YAxis domain={[yAxisMin, yAxisMax]} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
+                          <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "20px", color: darkMode ? '#fff' : '#000', padding: "16px" }} formatter={(value: any, name: string) => [Array.isArray(value) ? `[$${value[0]}, $${value[1]}]` : `$${value}`, name]} labelFormatter={(label) => `Day ${label}`} itemStyle={{ fontWeight: 600 }} />
+                          <Legend verticalAlign="top" height={40} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v}</span>} />
+                          <Area type="monotone" dataKey="uncertainty" stroke="none" fill="url(#colorUncertainty)" name="90% Confidence Bounds" isAnimationActive={true} animationDuration={2000} animationEasing="ease-out" />
+                          <Line type="monotone" dataKey="likely_price" stroke="#4361EE" filter={darkMode ? "url(#neonGlowBlue)" : ""} strokeWidth={5} dot={false} activeDot={{ r: 8, fill: "#4361EE", strokeWidth: 0 }} name="Median Forecast" isAnimationActive={true} animationDuration={2000} animationEasing="ease-out" />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* STRESS TEST CONTROLS */}
+                  <div className="flex flex-col gap-6">
+                    <Card className={`flex-1 flex flex-col justify-center relative overflow-hidden ${darkMode ? "bg-gradient-to-br from-[#1A1D24] to-[#111318]" : "bg-white"}`}>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#4361EE]/10 rounded-full blur-3xl"></div>
+                      <h4 className="font-bold flex items-center mb-6 text-lg"><Sliders className="w-5 h-5 mr-2 text-[#4361EE]" /> Stress-Test Scenario</h4>
+
+                      <div className="space-y-6">
+                        <div>
+                          <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Base Asset Price</p>
+                          <input
+                            type="number"
+                            value={price}
+                            onChange={(e) => setPrice(Number(e.target.value))}
+                            className={`w-full text-2xl font-mono font-bold px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-[#4361EE] ${darkMode ? "bg-[#0A0C10] border border-white/10 text-white" : "bg-slate-100 border border-slate-300 text-slate-900"}`}
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <p className={`text-xs font-bold uppercase tracking-widest ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Sentiment Injection</p>
+                            <span className={`text-lg font-mono font-bold ${sentiment >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>{sentiment > 0 ? "+" : ""}{sentiment.toFixed(2)}</span>
+                          </div>
+                          <input type="range" min="-1.0" max="1.0" step="0.01" value={sentiment} onChange={(e) => setSentiment(Number(e.target.value))} className="w-full h-4 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none[&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg" style={{ background: `linear-gradient(to right, ${sentiment >= 0 ? '#00FF88' : '#FF3366'} ${((sentiment + 1) / 2) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${((sentiment + 1) / 2) * 100}%)` }} />
+                        </div>
+                      </div>
+                    </Card>
+
+                    <button
+                      onClick={runForecastSimulation}
+                      disabled={isFetchingForecast}
+                      className={`w-full py-5 rounded-[24px] font-bold text-lg flex items-center justify-center transition-all duration-300 transform active:scale-95 shadow-lg ${isFetchingForecast ? darkMode ? "bg-[#1A1D24] text-slate-500" : "bg-slate-200 text-slate-400" : "bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_0_30px_rgba(67,97,238,0.5)] hover:-translate-y-1"}`}
+                    >
+                      {isFetchingForecast ? <><RefreshCw className="w-6 h-6 mr-3 animate-spin" /> Calculating Matrix...</> : <><Zap className="w-6 h-6 mr-3" /> Run Simulation</>}
+                    </button>
                   </div>
-                  <input type="range" min="3000" max="6000" step="10" value={price} onChange={(e) => setPrice(Number(e.target.value))} disabled={isSimulating} className="w-full h-4 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:opacity-0" style={{ background: `linear-gradient(to right, #7209B7 ${((price - 3000) / 3000) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${((price - 3000) / 3000) * 100}%)` }} />
-                </Card>
-
-                <Card className="flex flex-col justify-between h-48 bg-gradient-to-br from-[#4361EE]/5 to-transparent">
-                  <div>
-                    <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Retail Sentiment</p>
-                    <p className={`text-3xl font-mono font-bold ${sentiment >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>{sentiment > 0 ? "+" : ""}{sentiment.toFixed(2)}</p>
-                  </div>
-                  <input type="range" min="-1.0" max="1.0" step="0.05" value={sentiment} onChange={(e) => setSentiment(Number(e.target.value))} disabled={isSimulating} className="w-full h-4 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none[&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6[&::-webkit-slider-thumb]:opacity-0" style={{ background: `linear-gradient(to right, #4361EE ${((sentiment + 1) / 2) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${((sentiment + 1) / 2) * 100}%)` }} />
-                </Card>
-
-                <Card className="flex flex-col justify-between h-48 bg-gradient-to-br from-[#FCAF45]/5 to-transparent">
-                  <div>
-                    <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Social Hype Volume</p>
-                    <p className="text-3xl font-mono font-bold text-[#FCAF45]">{(hype / 1000000).toFixed(2)}M</p>
-                  </div>
-                  <input type="range" min="1" max="5000000" step="10000" value={hype} onChange={(e) => setHype(Number(e.target.value))} disabled={isSimulating} className="w-full h-4 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:opacity-0" style={{ background: `linear-gradient(to right, #FCAF45 ${(hype / 5000000) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${(hype / 5000000) * 100}%)` }} />
-                </Card>
-              </div>
-
-              <div className="mt-8 flex items-center justify-center">
-                <p className={`text-sm font-medium flex items-center px-5 py-2.5 rounded-full ${darkMode ? "bg-[#1A1D24] text-slate-400 border border-white/5" : "bg-slate-200/50 text-slate-500"}`}>
-                  <Info className="w-4 h-4 mr-2" /> You can adjust the values in these boxes to simulate new market scenarios.
-                </p>
-              </div>
-            </div>
-
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </div>
