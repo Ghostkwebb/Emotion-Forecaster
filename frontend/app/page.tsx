@@ -6,7 +6,7 @@ import {
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ReferenceLine
 } from "recharts";
-import { AlertTriangle, Activity, Play, Info, Moon, Sun, RefreshCw, Pause, StepForward, GitBranch, Loader2, MousePointerClick, BarChart3, Hexagon, Zap, TrendingUp, Sparkles, Shield, Brain, Sliders, ArrowRight, Terminal, Database, ExternalLink, Target, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { AlertTriangle, Activity, Play, Info, Moon, Sun, RefreshCw, Pause, StepForward, GitBranch, Loader2, MousePointerClick, BarChart3, Hexagon, Zap, TrendingUp, Sparkles, Shield, Brain, Sliders, ArrowRight, Terminal, Database, ExternalLink, Target, ArrowDownRight, ArrowUpRight, ChevronUp, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function MarketForecasterDashboard() {
@@ -23,6 +23,7 @@ export default function MarketForecasterDashboard() {
   const [forecastData, setForecastData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isFetchingForecast, setIsFetchingForecast] = useState(false);
+  const [isControlsOpen, setIsControlsOpen] = useState(true);
 
   // Live Sync State (NEW)
   const [liveSyncData, setLiveSyncData] = useState<any>(null);
@@ -471,7 +472,6 @@ export default function MarketForecasterDashboard() {
                       <div><p className={`text-[8px] font-bold uppercase tracking-wider mb-0.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Anomaly Z-Score</p><p className="font-mono font-bold text-[11px]">{currentFrame.z_score || "--"}</p></div>
                     </div>
                   </div>
-                  <button onClick={branchToSandbox} className="w-full py-2.5 rounded-xl text-[11px] font-bold flex items-center justify-center bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_4px_15px_-4px_rgba(67,97,238,0.4)] transition-all active:scale-95"><GitBranch className="w-3.5 h-3.5 mr-1.5" /> Branch to Sandbox</button>
                 </Card>
 
                 <Card className="xl:flex-1 min-h-[250px] xl:min-h-0 flex flex-col p-0 overflow-hidden border border-[#FF3366]/20">
@@ -541,55 +541,70 @@ export default function MarketForecasterDashboard() {
                     </Card>
                   </a>
 
-                  <div className="xl:flex-1 grid grid-cols-1 xl:grid-cols-3 gap-3 xl:min-h-0">
-                    <Card className="xl:col-span-2 min-h-[300px] xl:min-h-0 flex flex-col !p-4 xl:h-full">
-                      <div className="flex justify-between items-center mb-2">
-                        <h2 className="text-[13px] font-bold flex items-center"><TrendingUp className="w-4 h-4 mr-1 text-[#4361EE]" /> 30-Day Forward Trajectory</h2>
-                        {isFetchingForecast && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#4361EE]" />}
-                      </div>
-                      <div className={`w-full flex-1 xl:min-h-0 transition-opacity duration-300 ${isFetchingForecast ? "opacity-50" : "opacity-100"}`}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart key={chartKey} data={combinedChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="colorUncertainty" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4361EE" stopOpacity={darkMode ? 0.4 : 0.2} /><stop offset="95%" stopColor={darkMode ? "#4361EE" : "#4361EE"} stopOpacity={0.0} /></linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#2A2E37" : "#e2e8f0"} opacity={0.6} />
-                            <XAxis dataKey="day" type="number" domain={['dataMin', 'dataMax']} tickCount={7} tickFormatter={(t) => t === 0 ? "TODAY" : t > 0 ? `+${t}` : `${t}`} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 9, fontWeight: "bold" }} axisLine={false} tickLine={false} tickMargin={6} />
-                            <YAxis domain={[yAxisMin, yAxisMax]} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 9 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
-                            <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "12px", color: darkMode ? '#fff' : '#000', padding: "8px" }} formatter={(value: any, name: any) => [Array.isArray(value) ? `[$${value[0].toFixed(2)}, $${value[1].toFixed(2)}]` : `$${value.toFixed(2)}`, name.replace("_", " ")]} labelFormatter={(label) => label === 0 ? "TODAY" : label > 0 ? `Day +${label} (Forecast)` : `Day ${label} (Historical)`} itemStyle={{ fontWeight: 600, textTransform: "capitalize", fontSize: "11px" }} />
-                            <Legend verticalAlign="top" height={24} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 capitalize text-[10px] ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v.replace("_", " ")}</span>} />
-                            <ReferenceLine x={0} stroke={darkMode ? "#94a3b8" : "#64748b"} strokeDasharray="4 4" label={{ position: 'top', value: 'TODAY', fill: darkMode ? '#fff' : '#000', fontSize: 9, fontWeight: 'bold' }} />
-                            <Line type="monotone" dataKey="past_price" stroke={darkMode ? "#475569" : "#94a3b8"} strokeWidth={2} dot={false} activeDot={{ r: 5, fill: darkMode ? "#475569" : "#94a3b8", strokeWidth: 0 }} name="Past 30 Days" isAnimationActive={false} />
-                            <Area type="monotone" dataKey="uncertainty" stroke="none" fill="url(#colorUncertainty)" name="90% Bounds" isAnimationActive={true} animationDuration={2000} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="likely_price" stroke="#4361EE" filter={darkMode ? "url(#neonGlowBlue)" : ""} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#4361EE", strokeWidth: 0 }} name="Forecast" isAnimationActive={true} animationDuration={2000} animationEasing="ease-out" />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </Card>
-
-                    <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
-                      <Card className={`flex-1 flex flex-col justify-center relative overflow-hidden !p-4 xl:min-h-0 ${darkMode ? "bg-gradient-to-br from-[#1A1D24] to-[#111318]" : "bg-white"}`}>
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-[#4361EE]/10 rounded-full blur-2xl"></div>
-                        <h4 className="font-bold flex items-center mb-3 text-xs"><Sliders className="w-3.5 h-3.5 mr-1.5 text-[#4361EE]" /> Stress-Test Sandbox</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Base Price</p>
-                            <input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} className={`w-full text-sm font-mono font-bold px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-[#4361EE] ${darkMode ? "bg-[#0A0C10] border border-white/10 text-white" : "bg-slate-100 border border-slate-300 text-slate-900"}`} />
-                          </div>
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <p className={`text-[9px] font-bold uppercase tracking-widest ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Sentiment Injection</p>
-                              <span className={`text-[11px] font-mono font-bold ${sentiment >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>{sentiment > 0 ? "+" : ""}{sentiment.toFixed(2)}</span>
-                            </div>
-                            <input type="range" min="-1.0" max="1.0" step="0.01" value={sentiment} onChange={(e) => setSentiment(Number(e.target.value))} className="w-full h-2.5 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full[&::-webkit-slider-thumb]:shadow-sm" style={{ background: `linear-gradient(to right, ${sentiment >= 0 ? '#00FF88' : '#FF3366'} ${((sentiment + 1) / 2) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${((sentiment + 1) / 2) * 100}%)` }} />
-                          </div>
-                        </div>
-                      </Card>
-                      <button onClick={runForecastSimulation} disabled={isFetchingForecast} className={`w-full py-3 shrink-0 rounded-xl font-bold text-xs flex items-center justify-center transition-all duration-300 transform active:scale-95 shadow-sm ${isFetchingForecast ? darkMode ? "bg-[#1A1D24] text-slate-500" : "bg-slate-200 text-slate-400" : "bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_0_15px_rgba(67,97,238,0.4)] hover:-translate-y-0.5"}`}>
-                        {isFetchingForecast ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Calculating...</> : <><Zap className="w-3.5 h-3.5 mr-1.5" /> Run Simulation</>}
-                      </button>
+                  <Card className="xl:flex-1 min-h-[400px] xl:min-h-0 flex flex-col !p-4 relative">
+                    <div className="flex justify-between items-center mb-2">
+                      <h2 className="text-[13px] font-bold flex items-center"><TrendingUp className="w-4 h-4 mr-1 text-[#4361EE]" /> 30-Day Forward Trajectory</h2>
+                      {isFetchingForecast && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#4361EE]" />}
                     </div>
-                  </div>
+
+                    <div className={`w-full flex-1 xl:min-h-0 transition-opacity duration-300 ${isFetchingForecast ? "opacity-50" : "opacity-100"}`}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart key={chartKey} data={combinedChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorUncertainty" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4361EE" stopOpacity={darkMode ? 0.4 : 0.2} /><stop offset="95%" stopColor={darkMode ? "#4361EE" : "#4361EE"} stopOpacity={0.0} /></linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#2A2E37" : "#e2e8f0"} opacity={0.6} />
+                          <XAxis dataKey="day" type="number" domain={['dataMin', 'dataMax']} tickCount={7} tickFormatter={(t) => t === 0 ? "TODAY" : t > 0 ? `+${t}` : `${t}`} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 9, fontWeight: "bold" }} axisLine={false} tickLine={false} tickMargin={6} />
+                          <YAxis domain={[yAxisMin, yAxisMax]} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 9 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
+                          <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "12px", color: darkMode ? '#fff' : '#000', padding: "8px" }} formatter={(value: any, name: any) => [Array.isArray(value) ? `[$${value[0].toFixed(2)}, $${value[1].toFixed(2)}]` : `$${value.toFixed(2)}`, name.replace("_", " ")]} labelFormatter={(label) => label === 0 ? "TODAY" : label > 0 ? `Day +${label} (Forecast)` : `Day ${label} (Historical)`} itemStyle={{ fontWeight: 600, textTransform: "capitalize", fontSize: "11px" }} />
+                          <Legend verticalAlign="top" height={30} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 capitalize text-xs ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v.replace("_", " ")}</span>} />
+                          <ReferenceLine x={0} stroke={darkMode ? "#94a3b8" : "#64748b"} strokeDasharray="4 4" label={{ position: 'top', value: 'TODAY', fill: darkMode ? '#fff' : '#000', fontSize: 9, fontWeight: 'bold' }} />
+                          <Line type="monotone" dataKey="past_price" stroke={darkMode ? "#475569" : "#94a3b8"} strokeWidth={2} dot={false} activeDot={{ r: 5, fill: darkMode ? "#475569" : "#94a3b8", strokeWidth: 0 }} name="Past 30 Days" isAnimationActive={false} />
+                          <Area type="monotone" dataKey="uncertainty" stroke="none" fill="url(#colorUncertainty)" name="90% Bounds" isAnimationActive={true} animationDuration={2000} animationEasing="ease-out" />
+                          <Line type="monotone" dataKey="likely_price" stroke="#4361EE" filter={darkMode ? "url(#neonGlowBlue)" : ""} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#4361EE", strokeWidth: 0 }} name="Forecast" isAnimationActive={true} animationDuration={2000} animationEasing="ease-out" />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* FLOATING STRESS-TEST CONTROLS (TOP RIGHT OVERLAY) */}
+                    <motion.div animate={{ height: isControlsOpen ? "auto" : "52px" }} className={`hidden md:flex flex-col w-[300px] absolute top-4 right-4 z-10 rounded-2xl border backdrop-blur-xl shadow-2xl overflow-hidden ${darkMode ? "bg-[#111318]/80 border-white/10" : "bg-white/80 border-slate-200"}`}>
+
+                      {/* HEADER - NOW CLICKABLE */}
+                      <div className="flex justify-between items-center p-4 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0" onClick={() => setIsControlsOpen(!isControlsOpen)}>
+                        <h4 className="font-bold flex items-center text-xs"><Sliders className="w-3.5 h-3.5 mr-1.5 text-[#4361EE]" /> Stress-Test Sandbox</h4>
+                        <div className="flex items-center space-x-2">
+                          <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${sentiment < -0.3 ? "bg-[#FF3366]/20 text-[#FF3366]" : sentiment > 0.5 ? "bg-[#00FF88]/20 text-[#00FF88]" : "bg-[#4361EE]/20 text-[#4361EE]"}`}>
+                            {sentiment < -0.3 ? "Bearish" : sentiment > 0.5 ? "Bullish" : "Baseline"}
+                          </div>
+                          {isControlsOpen ? <ChevronUp className="w-4 h-4 opacity-50" /> : <ChevronDown className="w-4 h-4 opacity-50" />}
+                        </div>
+                      </div>
+
+                      {/* BODY - COLLAPSIBLE */}
+                      <AnimatePresence>
+                        {isControlsOpen && (
+                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="px-4 pb-4 flex flex-col">
+                            <div className="space-y-3 mb-4">
+                              <div>
+                                <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Base Asset Price</p>
+                                <input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} className={`w-full text-sm font-mono font-bold px-2 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-[#4361EE] ${darkMode ? "bg-[#0A0C10]/80 border border-white/10 text-white" : "bg-slate-100/80 border border-slate-300 text-slate-900"}`} />
+                              </div>
+                              <div>
+                                <div className="flex justify-between items-center mb-1">
+                                  <p className={`text-[9px] font-bold uppercase tracking-widest ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Sentiment Injection</p>
+                                  <span className={`text-[10px] font-mono font-bold ${sentiment >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>{sentiment > 0 ? "+" : ""}{sentiment.toFixed(2)}</span>
+                                </div>
+                                <input type="range" min="-1.0" max="1.0" step="0.01" value={sentiment} onChange={(e) => setSentiment(Number(e.target.value))} className="w-full h-2 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24][&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3[&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white[&::-webkit-slider-thumb]:rounded-full[&::-webkit-slider-thumb]:shadow-md" style={{ background: `linear-gradient(to right, ${sentiment >= 0 ? '#00FF88' : '#FF3366'} ${((sentiment + 1) / 2) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${((sentiment + 1) / 2) * 100}%)` }} />
+                              </div>
+                            </div>
+                            <button onClick={runForecastSimulation} disabled={isFetchingForecast} className={`w-full py-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center transition-all duration-300 transform active:scale-95 shadow-md ${isFetchingForecast ? darkMode ? "bg-[#1A1D24] text-slate-500" : "bg-slate-200 text-slate-400" : "bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_0_15px_rgba(67,97,238,0.4)] hover:-translate-y-0.5"}`}>
+                              {isFetchingForecast ? <><RefreshCw className="w-3 h-3 mr-1.5 animate-spin" /> Calculating...</> : <><Zap className="w-3 h-3 mr-1.5" /> Run Simulation</>}
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  </Card>
                 </div>
               )}
             </motion.div>
