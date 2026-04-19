@@ -4,28 +4,32 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ReferenceLine
 } from "recharts";
-import { AlertTriangle, Activity, Play, Info, Moon, Sun, RefreshCw, Pause, StepForward, GitBranch, Loader2, MousePointerClick, BarChart3, Hexagon, Zap, TrendingUp, Sparkles, Shield, Brain, Sliders, ArrowRight } from "lucide-react";
+import { AlertTriangle, Activity, Play, Info, Moon, Sun, RefreshCw, Pause, StepForward, GitBranch, Loader2, MousePointerClick, BarChart3, Hexagon, Zap, TrendingUp, Sparkles, Shield, Brain, Sliders, ArrowRight, Terminal, Database, ExternalLink, Target, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function MarketForecasterDashboard() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
-  const [darkMode, setDarkMode] = useState(true); // Always start dark for the premium vibe
+  const [darkMode, setDarkMode] = useState(true);
 
-  const [price, setPrice] = useState(4500);
-  const [sentiment, setSentiment] = useState(0);
+  // Simulation / Sandbox State
+  const [price, setPrice] = useState(7126.06);
+  const [sentiment, setSentiment] = useState(0.3);
   const [hype, setHype] = useState(500000);
 
   const [forecastData, setForecastData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isFetching, setIsFetching] = useState(false);
+  const [isFetchingForecast, setIsFetchingForecast] = useState(false);
+
+  // Live Sync State (NEW)
+  const [liveSyncData, setLiveSyncData] = useState<any>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [chartKey, setChartKey] = useState(0);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [activeTab, setActiveTab] = useState("home"); // <-- Start on the new Landing Page
+  const [activeTab, setActiveTab] = useState("home");
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [isPlayingHistory, setIsPlayingHistory] = useState(false);
@@ -34,34 +38,60 @@ export default function MarketForecasterDashboard() {
   const [flashDanger, setFlashDanger] = useState(false);
   const [narrative, setNarrative] = useState<{ date: string, text: string, upvotes: number } | null>(null);
 
-  useEffect(() => {
-    const fetchForecast = async () => {
-      setIsFetching(true);
-      try {
-        setError(null);
-        const res = await fetch("https://hive-backend-yp5d.onrender.com/forecast", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ current_price: price, current_sentiment: sentiment, current_hype_volume: hype, days_to_forecast: 30 }),
-        });
+  // MANUAL FORECAST TRIGGER (Replaces auto-updating useEffect)
+  const runForecastSimulation = async () => {
+    setIsFetchingForecast(true);
+    setChartKey(prev => prev + 1); // Triggers re-render animation
+    try {
+      setError(null);
+      const res = await fetch("https://hive-backend-yp5d.onrender.com/forecast", { // MAKE SURE THIS IS YOUR BACKEND URL
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_price: price, current_sentiment: sentiment, current_hype_volume: hype, days_to_forecast: 30 }),
+      });
 
-        if (!res.ok) throw new Error("API fail");
-        const data = await res.json();
-        setForecastData(data.forecast);
-      } catch (err) {
-        setError("API Offline: Run Python FastAPI backend on port 8000.");
-      } finally {
-        setIsFetching(false);
-      }
-    };
-    const timeoutId = setTimeout(fetchForecast, 300);
-    return () => clearTimeout(timeoutId);
-  }, [price, sentiment, hype]);
+      if (!res.ok) throw new Error("Forecast API fail");
+      const data = await res.json();
+      setForecastData(data.forecast);
+    } catch (err) {
+      setError("API Offline: Ensure backend is running.");
+    } finally {
+      setIsFetchingForecast(false);
+    }
+  };
 
+  // LIVE ETL PIPELINE SYNC (NEW)
+  const initiateLiveSync = async () => {
+    setIsSyncing(true);
+    try {
+      // If you hosted it on Render, change this URL!
+      const res = await fetch("https://hive-backend-yp5d.onrender.com/live-sync");
+      if (!res.ok) throw new Error("Failed to sync live data");
+      const data = await res.json();
+
+      // Update UI with Live Data
+      setLiveSyncData(data);
+
+      // Auto-fill the Sandbox Sliders with the live numbers
+      setPrice(data.latest_actual_price);
+      setSentiment(data.live_sentiment_score);
+
+      // Automatically run the first simulation
+      setTimeout(() => runForecastSimulation(), 500);
+
+    } catch (err) {
+      console.error(err);
+      setError("Live Sync Failed. Ensure backend /live-sync endpoint is available.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Fetch History on Load
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch("https://hive-backend-yp5d.onrender.com/simulation-data");
+        const res = await fetch("https://hive-backend-yp5d.onrender.com/simulation-data"); // UPDATE TO LIVE URL IF NEEDED
         if (res.ok) {
           const data = await res.json();
           setHistoryData(data.simulation_data);
@@ -73,6 +103,7 @@ export default function MarketForecasterDashboard() {
     fetchHistory();
   }, []);
 
+  // History Playback Engine
   useEffect(() => {
     if (isPlayingHistory && historyIndex < historyData.length - 1) {
       const timer = setTimeout(() => setHistoryIndex((prev) => prev + 1), 120);
@@ -82,6 +113,7 @@ export default function MarketForecasterDashboard() {
     }
   }, [isPlayingHistory, historyIndex, historyData]);
 
+  // Radar Anomaly Engine
   useEffect(() => {
     if (activeTab !== "history" || historyData.length === 0) return;
     const current = historyData[historyIndex];
@@ -105,23 +137,41 @@ export default function MarketForecasterDashboard() {
     }
   }, [historyIndex, historyData, activeTab]);
 
-  const mappedData = useMemo(() => forecastData.map((d) => ({ ...d, uncertainty: [d.lower_bound, d.upper_bound] })), [forecastData]);
+  // 60-DAY CONTINUOUS TIMELINE GENERATOR
+  const combinedChartData = useMemo(() => {
+    const data = [];
+    let pastPrices = [];
 
-  const startLiveSimulation = () => {
-    setChartKey((prev) => prev + 1);
-    setIsSimulating(true);
-    setTimeout(() => setIsSimulating(false), 2500);
-  };
-
-  const branchToSandbox = () => {
-    const current = historyData[historyIndex];
-    if (current) {
-      setPrice(current.actual_price);
-      setSentiment(current.sentiment_score);
+    if (activeTab === "sandbox" && historyData.length > 0 && liveSyncData?.root_cause_headline === historyData[historyIndex]?.root_cause_text) {
+      const startIdx = Math.max(0, historyIndex - 30);
+      pastPrices = historyData.slice(startIdx, historyIndex).map(d => d.actual_price);
+    } else {
+      const backendHistory = liveSyncData?.historical_prices || liveSyncData?.past_prices || liveSyncData?.history;
+      if (backendHistory && Array.isArray(backendHistory)) pastPrices = backendHistory;
+      else {
+        let tempPrice = price;
+        for (let i = 0; i < 30; i++) { pastPrices.unshift(tempPrice); tempPrice = tempPrice * (1 + (Math.random() * 0.02 - 0.01)); }
+      }
     }
-    setIsPlayingHistory(false);
-    setActiveTab("sandbox");
-  };
+
+    pastPrices.forEach((p: number, i: number) => {
+      data.push({ day: i - pastPrices.length, past_price: p });
+    });
+
+    data.push({ day: 0, past_price: price, likely_price: price, uncertainty: [price, price] });
+
+    if (forecastData && forecastData.length > 0) {
+      forecastData.forEach((d, i) => {
+        data.push({ day: i + 1, likely_price: d.likely_price, uncertainty: [d.lower_bound, d.upper_bound] });
+      });
+    }
+    return data;
+  }, [forecastData, historyData, historyIndex, activeTab, liveSyncData, price]);
+
+  // Dynamic Y-Axis based on the full 60-day range
+  const allPrices = combinedChartData.flatMap(d => [d.past_price, d.likely_price, d.uncertainty?.[0], d.uncertainty?.[1]].filter(Boolean));
+  const yAxisMin = allPrices.length > 0 ? Math.floor(Math.min(...allPrices) * 0.98) : 3000;
+  const yAxisMax = allPrices.length > 0 ? Math.ceil(Math.max(...allPrices) * 1.02) : 6000;
 
   const handleThemeToggle = (e: React.MouseEvent) => {
     const nextIsDark = !darkMode;
@@ -137,8 +187,31 @@ export default function MarketForecasterDashboard() {
     });
   };
 
-  const yAxisMin = forecastData.length > 0 ? Math.floor(Math.min(...forecastData.map((d) => d.lower_bound)) * 0.98) : 3000;
-  const yAxisMax = forecastData.length > 0 ? Math.ceil(Math.max(...forecastData.map((d) => d.upper_bound)) * 1.02) : 6000;
+  const branchToSandbox = () => {
+    const current = historyData[historyIndex];
+    if (current) {
+      setPrice(current.actual_price);
+      setSentiment(current.sentiment_score);
+
+      // Unlock the Sandbox UI using the historical data snapshot
+      setLiveSyncData({
+        latest_actual_price: current.actual_price,
+        live_sentiment_score: current.sentiment_score,
+        live_forecast: {
+          lower_bound: current.lower_bound || 0,
+          target_price: current.predicted_likely || 0,
+          upper_bound: current.upper_bound || 0
+        },
+        root_cause_headline: current.root_cause_text || "Historical Market Event",
+        root_cause_url: current.root_cause_url || "#"
+      });
+    }
+    setIsPlayingHistory(false);
+    setActiveTab("sandbox");
+
+    // Auto-run the matrix with the new historical numbers
+    setTimeout(() => runForecastSimulation(), 500);
+  };
 
   const handleChartClick = React.useCallback((data: any) => {
     if (!data) return;
@@ -193,482 +266,335 @@ export default function MarketForecasterDashboard() {
     { subject: 'Meme Stocks', value: normalizeForRadar(currentFrame.meme_sector), raw: currentFrame.meme_sector || 0 },
   ];
 
-  // Data for the Ticker
   const tickerString = currentFrame.date
     ? `H.I.V.E. LIVE SYNC • TSLA SENTIMENT: ${currentFrame.tesla_sentiment > 0 ? "+" : ""}${(currentFrame.tesla_sentiment || 0).toFixed(2)} (${currentFrame.tesla_sentiment > 0 ? 'HYPE' : 'COOLING'}) • AAPL SENTIMENT: ${currentFrame.apple_sentiment > 0 ? "+" : ""}${(currentFrame.apple_sentiment || 0).toFixed(2)} • MEME SECTOR RADAR: ${currentFrame.anomaly_status || "NORMAL"} • SPY PROJECTION: ${forecastData[29]?.likely_price > price ? "BULLISH" : "BEARISH"} `
     : `H.I.V.E. LIVE SYNC • TSLA SENTIMENT: +0.81 (HYPE) • AAPL SENTIMENT: -0.21 (COOLING) • MEME SECTOR RADAR: NORMAL • ESTABLISHING SECURE CONNECTION TO DATA STREAM... `;
 
+  // DYNAMIC BACKGROUND COLOR BASED ON SENTIMENT SLIDER
+  const dynamicBg = sentiment > 0
+    ? `radial-gradient(circle at 50% 100%, rgba(0, 255, 136, ${Math.abs(sentiment) * 0.15}), transparent 70%)`
+    : `radial-gradient(circle at 50% 100%, rgba(255, 51, 102, ${Math.abs(sentiment) * 0.15}), transparent 70%)`;
+
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-500 overflow-x-hidden ${darkMode ? "bg-[#050608] text-slate-100" : "bg-[#F3F4F6] text-slate-900"}`}>
+    <div className={`xl:h-screen min-h-screen flex flex-col font-sans transition-colors duration-500 xl:overflow-hidden relative ${darkMode ? "bg-[#050608] text-slate-100" : "bg-[#F3F4F6] text-slate-900"}`}>
 
-      {/* CSS for View Transitions & Ticker */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-        @keyframes infinite-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .animate-marquee { animation: infinite-scroll 25s linear infinite; }
-      `}} />
+      {/* DYNAMIC BACKGROUND & CSS */}
+      {activeTab === "sandbox" && <div className="absolute inset-0 pointer-events-none transition-all duration-700 ease-out z-0" style={{ background: dynamicBg }}></div>}
+      <style dangerouslySetInnerHTML={{ __html: `::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; } @keyframes infinite-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } } .animate-marquee { animation: infinite-scroll 25s linear infinite; }` }} />
+      <svg className="w-0 h-0 absolute"><defs><filter id="neonGlowPurple" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter><filter id="neonGlowBlue" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter></defs></svg>
 
-      {/* SVG FILTERS FOR NEON GLOW */}
-      <svg className="w-0 h-0 absolute">
-        <defs>
-          <filter id="neonGlowPurple" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-          <filter id="neonGlowBlue" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-      </svg>
-
-      {/* LIVE BLOOMBERG-STYLE TICKER */}
-      <div className={`w-full overflow-hidden border-b flex whitespace-nowrap py-2 z-50 ${darkMode ? "bg-[#0A0C10] border-white/5 text-[#00FF88]" : "bg-slate-900 border-black text-[#00FF88]"}`}>
-        <div className="animate-marquee flex w-max text-xs font-mono font-bold tracking-widest">
-          <span className="mx-8">{tickerString}</span>
-          <span className="mx-8">{tickerString}</span>
-          <span className="mx-8">{tickerString}</span>
-          <span className="mx-8">{tickerString}</span>
+      {/* TICKER (Shrink-0 to protect height) */}
+      <div className={`shrink-0 w-full overflow-hidden border-b flex whitespace-nowrap py-1.5 relative z-50 ${darkMode ? "bg-[#0A0C10] border-white/5 text-[#00FF88]" : "bg-slate-900 border-black text-[#00FF88]"}`}>
+        <div className="animate-marquee flex w-max text-[10px] md:text-xs font-mono font-bold tracking-widest">
+          <span className="mx-8">{tickerString}</span><span className="mx-8">{tickerString}</span><span className="mx-8">{tickerString}</span><span className="mx-8">{tickerString}</span>
         </div>
       </div>
 
-      <div className="p-4 md:p-8 max-w-[1500px] mx-auto space-y-6">
+      {/* MAIN CONTAINER (Flex-1 to fill exact remaining height) */}
+      <div className="p-3 md:p-5 max-w-[1600px] mx-auto w-full flex-1 flex flex-col xl:min-h-0 relative z-10 gap-3">
 
-        {/* PREMIUM HEADER / NAVBAR */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8 mt-4">
-
-          <div className="flex items-center space-x-4 cursor-pointer" onClick={() => setActiveTab('home')}>
-            <div className="w-12 h-12 relative flex items-center justify-center">
+        {/* HEADER (Shrink-0) */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="shrink-0 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('home')}>
+            <div className="w-10 h-10 relative flex items-center justify-center">
               <img src="/HIVE.png" alt="Pulse AI Logo" className="w-full h-full object-contain rounded-xl" />
-              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00FF88] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#00FF88] border-2 border-[#050608]"></span>
-              </span>
+              <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00FF88] opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-[#00FF88] border-2 border-[#050608]"></span></span>
             </div>
             <div className="flex flex-col">
-              <h1 className={`text-2xl font-extrabold tracking-tight ${darkMode ? "text-white" : "text-slate-900"}`}>
-                H.I.V.E.
-              </h1>
-              <div className="flex items-center mt-1 space-x-3">
-                <div className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${darkMode ? "bg-[#1A1D24] text-slate-400 border border-white/5" : "bg-slate-200 text-slate-500"}`}>
-                  Quantile Engine
-                </div>
-                <div className="flex items-center text-[9px] font-bold text-[#00FF88] uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00FF88] mr-1.5"></span> Live Sync
-                </div>
+              <h1 className={`text-xl font-extrabold tracking-tight ${darkMode ? "text-white" : "text-slate-900"}`}>H.I.V.E.</h1>
+              <div className="flex items-center space-x-2">
+                <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${darkMode ? "bg-[#1A1D24] text-slate-400 border border-white/5" : "bg-slate-200 text-slate-500"}`}>Quantile Engine</div>
+                <div className="flex items-center text-[8px] font-bold text-[#00FF88] uppercase tracking-wider"><span className="w-1.5 h-1.5 rounded-full bg-[#00FF88] mr-1"></span> Live Sync</div>
               </div>
             </div>
           </div>
-
-          <div className={`flex items-center p-1.5 rounded-full relative shadow-sm transition-colors ${darkMode ? "bg-[#111318] border border-white/5" : "bg-white border border-slate-200"}`}>
+          <div className={`flex items-center p-1 rounded-full relative shadow-sm transition-colors ${darkMode ? "bg-[#111318] border border-white/5" : "bg-white border border-slate-200"}`}>
             <div className="flex relative">
               {['home', 'history', 'sandbox'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`relative px-4 md:px-6 py-2 rounded-full text-sm font-bold transition-all z-10 ${activeTab === tab ? (darkMode ? "text-white" : "text-slate-900") : (darkMode ? "text-slate-500 hover:text-slate-300" : "text-slate-500 hover:text-slate-700")}`}
-                >
-                  {activeTab === tab && (
-                    <motion.div layoutId="activeTab" className={`absolute inset-0 rounded-full shadow-sm -z-10 ${darkMode ? "bg-[#1A1D24] border border-white/5" : "bg-slate-100"}`} transition={{ type: "spring", stiffness: 300, damping: 25 }} />
-                  )}
-                  {tab === 'home' ? 'Overview' : tab === 'history' ? 'Historical Proof' : 'Future Sandbox'}
+                <button key={tab} onClick={() => setActiveTab(tab)} className={`relative px-3 md:px-5 py-1.5 rounded-full text-xs font-bold transition-all z-10 ${activeTab === tab ? (darkMode ? "text-white" : "text-slate-900") : (darkMode ? "text-slate-500 hover:text-slate-300" : "text-slate-500 hover:text-slate-700")}`}>
+                  {activeTab === tab && <motion.div layoutId="activeTab" className={`absolute inset-0 rounded-full shadow-sm -z-10 ${darkMode ? "bg-[#1A1D24] border border-white/5" : "bg-slate-100"}`} transition={{ type: "spring", stiffness: 300, damping: 25 }} />}
+                  {tab === 'home' ? 'Overview' : tab === 'history' ? 'Historical Proof' : 'Live Sandbox'}
                 </button>
               ))}
             </div>
-
-            <div className={`w-px h-5 mx-2 ${darkMode ? "bg-white/10" : "bg-slate-200"}`}></div>
-
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }} onClick={handleThemeToggle} className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors focus:outline-none ${darkMode ? "hover:bg-[#1A1D24] text-[#FCAF45]" : "hover:bg-slate-100 text-slate-600"}`}>
+            <div className={`w-px h-4 mx-2 ${darkMode ? "bg-white/10" : "bg-slate-200"}`}></div>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }} onClick={handleThemeToggle} className={`relative w-7 h-7 flex items-center justify-center rounded-full transition-colors focus:outline-none ${darkMode ? "hover:bg-[#1A1D24] text-[#FCAF45]" : "hover:bg-slate-100 text-slate-600"}`}>
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={darkMode ? "dark" : "light"} initial={{ opacity: 0, rotate: -90, scale: 0.5 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} exit={{ opacity: 0, rotate: 90, scale: 0.5 }} transition={{ duration: 0.15 }} className="absolute">
-                  {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                </motion.div>
+                <motion.div key={darkMode ? "dark" : "light"} initial={{ opacity: 0, rotate: -90, scale: 0.5 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} exit={{ opacity: 0, rotate: 90, scale: 0.5 }} transition={{ duration: 0.15 }} className="absolute">{darkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}</motion.div>
               </AnimatePresence>
             </motion.button>
           </div>
         </motion.div>
 
-        {error && <div className="p-4 bg-[#FF3366]/10 border border-[#FF3366]/30 text-[#FF3366] rounded-2xl shadow-sm font-semibold">{error}</div>}
+        {error && <div className="shrink-0 p-3 bg-[#FF3366]/10 border border-[#FF3366]/30 text-[#FF3366] text-sm rounded-xl shadow-sm font-semibold">{error}</div>}
 
-        <AnimatePresence>
-          {flashDanger && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 pointer-events-none z-50 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#FF3366]/20 to-transparent" />}
-        </AnimatePresence>
+        {/* FLEX-1 TAB WRAPPER */}
+        <div className="flex-1 xl:min-h-0 relative w-full flex flex-col">
 
-        {/* XAI NARRATIVE POPUP */}
-        <AnimatePresence>
-          {narrative && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setNarrative(null)}>
-              <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} onClick={e => e.stopPropagation()} className={`w-full max-w-lg p-8 rounded-[32px] shadow-2xl border ${darkMode ? "bg-[#111318] border-white/10" : "bg-white border-slate-200"}`}>
-                <div className="w-14 h-14 rounded-[20px] bg-gradient-to-br from-[#7209B7] to-[#4361EE] flex items-center justify-center mb-6 shadow-lg">
-                  <Info className="w-7 h-7 text-white" />
+          {/* ================= TAB 0: HOME ================= */}
+          {activeTab === "home" && (
+            <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col h-full xl:overflow-y-auto pb-20 scrollbar-hide pr-2">
+
+              {/* HERO SECTION */}
+              <div className="relative w-full flex flex-col items-center text-center py-12 md:py-20 mb-12 shrink-0">
+                <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none">
+                  <div className={`w-[250px] h-[250px] md:w-[400px] md:h-[400px] rounded-full blur-[100px] md:blur-[150px] ${darkMode ? "bg-[#7209B7]/20" : "bg-[#4361EE]/10"}`}></div>
                 </div>
-                <h3 className="text-2xl font-bold mb-2">AI Root Cause Analysis</h3>
-                <p className={`text-sm mb-6 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>The social narrative driving the market logic.</p>
-
-                <div className={`p-6 rounded-[24px] border border-white/5 mb-6 relative overflow-hidden ${darkMode ? "bg-[#1A1D24]" : "bg-slate-50"}`}>
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[#7209B7] to-[#4361EE]"></div>
-                  <p className={`italic leading-relaxed ${darkMode ? "text-slate-200" : "text-slate-800"}`}>"{narrative.text}"</p>
+                <img src="/HIVE.png" className="w-20 h-20 md:w-28 md:h-28 mb-6 drop-shadow-[0_0_30px_rgba(114,9,183,0.5)] animate-pulse" alt="HIVE Logo" />
+                <h1 className={`text-5xl md:text-7xl font-black mb-3 tracking-tighter bg-clip-text text-transparent ${darkMode ? "bg-gradient-to-b from-white to-slate-400" : "bg-gradient-to-b from-slate-900 to-slate-500"}`}>H.I.V.E.</h1>
+                <h2 className="text-lg md:text-2xl font-bold text-[#4361EE] mb-6">Heuristic Internet Volatility Engine</h2>
+                <p className={`text-base md:text-lg max-w-2xl mx-auto mb-10 leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Institutional market forecasting driven entirely by the chaotic speed of internet sentiment.</p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full px-4">
+                  <button onClick={() => setActiveTab('history')} className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold flex items-center justify-center bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_8px_30px_-6px_rgba(67,97,238,0.5)] transition-all active:scale-95 text-base"><Play className="w-4 h-4 mr-2 fill-current" /> 2021 Simulation</button>
+                  <button onClick={() => setActiveTab('sandbox')} className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold flex items-center justify-center border-2 transition-all active:scale-95 text-base ${darkMode ? "border-white/10 hover:border-white/20 bg-[#111318] text-white" : "border-slate-300 hover:border-slate-400 bg-white text-slate-900"}`}><Sliders className="w-4 h-4 mr-2" /> Live Sandbox</button>
                 </div>
+              </div>
 
-                <div className={`flex justify-between items-center text-sm font-bold px-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                  <span>{narrative.date}</span>
-                  <span className="flex items-center text-[#FCAF45] bg-[#FCAF45]/10 px-4 py-1.5 rounded-full border border-[#FCAF45]/20">🔥 {narrative.upvotes} Upvotes</span>
+              {/* PROBLEM HOOK */}
+              <Card className={`text-center py-12 mb-16 max-w-4xl mx-auto border-t-4 border-t-[#FF3366] shrink-0 ${darkMode ? "bg-gradient-to-b from-[#1A1D24] to-transparent" : "bg-gradient-to-b from-slate-100 to-transparent"}`}>
+                <h3 className="text-2xl md:text-3xl font-black text-[#FF3366] mb-4">Traditional math failed in 2021. Sentiment took over.</h3>
+                <p className={`text-base md:text-lg leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                  When millions of retail investors mobilized online, Wall Street hedge funds were blindsided. Standard financial models simply cannot predict social media hype. H.I.V.E. exists to translate the chaos of the internet into quantifiable, actionable risk metrics.
+                </p>
+              </Card>
+
+              {/* THE THREE PILLARS (BENTO) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 shrink-0">
+                <Card className={`group hover:-translate-y-1 transition-all duration-300 ${darkMode ? "bg-[#111318]" : "bg-white"}`}>
+                  <div className="w-12 h-12 rounded-xl bg-[#FF3366]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Shield className="w-6 h-6 text-[#FF3366]" /></div>
+                  <h4 className="text-lg font-bold mb-2">Early Warning Radar</h4>
+                  <p className={`text-sm leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Don't wait for the crash. Our Z-Score anomaly detector continuously scans Reddit, flagging 'Critical Fear' and 'Extreme Hype' days before the broader market reacts.</p>
+                </Card>
+                <Card className={`group hover:-translate-y-1 transition-all duration-300 ${darkMode ? "bg-[#111318]" : "bg-white"}`}>
+                  <div className="w-12 h-12 rounded-xl bg-[#00FF88]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Brain className="w-6 h-6 text-[#00FF88]" /></div>
+                  <h4 className="text-lg font-bold mb-2">Root Cause XAI</h4>
+                  <p className={`text-sm leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>No black boxes. Click any market anomaly spike on our timeline to instantly reveal the exact social media narrative (and raw post) that drove the volatility.</p>
+                </Card>
+                <Card className={`group hover:-translate-y-1 transition-all duration-300 ${darkMode ? "bg-[#111318]" : "bg-white"}`}>
+                  <div className="w-12 h-12 rounded-xl bg-[#4361EE]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Database className="w-6 h-6 text-[#4361EE]" /></div>
+                  <h4 className="text-lg font-bold mb-2">Live ETL Pipeline</h4>
+                  <p className={`text-sm leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Instantly sync with live market data. Generate quantile-bounded 30-day forward projections and stress-test your portfolio against Black Swan internet events.</p>
+                </Card>
+              </div>
+
+              {/* ARCHITECTURE FLEX */}
+              <div className="mb-12 flex flex-col items-center shrink-0">
+                <h3 className="text-xl font-bold mb-8 text-center">Powered by Institutional-Grade Architecture</h3>
+                <div className="flex flex-col md:flex-row flex-wrap items-center justify-center gap-3 text-xs font-mono font-bold text-center">
+                  <div className={`px-4 py-3 rounded-xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>53k Raw Posts</div>
+                  <ArrowRight className="w-5 h-5 text-[#4361EE] hidden md:block" />
+                  <div className={`px-4 py-3 rounded-xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>VADER NLP</div>
+                  <ArrowRight className="w-5 h-5 text-[#4361EE] hidden md:block" />
+                  <div className={`px-4 py-3 rounded-xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>Quantile Regression</div>
+                  <ArrowRight className="w-5 h-5 text-[#4361EE] hidden md:block" />
+                  <div className={`px-4 py-3 rounded-xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>FastAPI Backend</div>
+                  <ArrowRight className="w-5 h-5 text-[#4361EE] hidden md:block" />
+                  <div className={`px-4 py-3 rounded-xl border-2 shadow-md ${darkMode ? "bg-[#4361EE]/10 text-[#4361EE] border-[#4361EE]/50" : "bg-blue-50 text-blue-700 border-blue-300"}`}>Next.js UI</div>
                 </div>
-                <button onClick={() => setNarrative(null)} className={`mt-8 w-full py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-95 ${darkMode ? "bg-white text-black" : "bg-slate-900 text-white"}`}>
-                  Acknowledge
-                </button>
-              </motion.div>
-            </div>
+              </div>
+
+            </motion.div>
           )}
-        </AnimatePresence>
 
+          {/* ================= TAB 1: HISTORY ================= */}
+          {activeTab === "history" && (
+            <motion.div variants={containerVariants} initial="hidden" animate="show" className="xl:h-full flex flex-col xl:grid xl:grid-cols-12 gap-3">
+              <div className="xl:col-span-8 flex flex-col gap-3 xl:min-h-0">
 
-        {/* ================= TAB 0: HOME / LANDING PAGE ================= */}
-        {activeTab === "home" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col">
-
-            {/* HERO SECTION */}
-            <div className="relative w-full flex flex-col items-center text-center py-24 md:py-32 mb-12">
-              <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none">
-                <div className={`w-[300px] h-[300px] md:w-[500px] md:h-[500px] rounded-full blur-[100px] md:blur-[150px] ${darkMode ? "bg-[#7209B7]/20" : "bg-[#4361EE]/10"}`}></div>
-              </div>
-
-              <img src="/HIVE.png" className="w-24 h-24 md:w-32 md:h-32 mb-8 drop-shadow-[0_0_30px_rgba(114,9,183,0.5)] animate-pulse" alt="HIVE Logo" />
-
-              <h1 className={`text-6xl md:text-8xl font-black mb-4 tracking-tighter bg-clip-text text-transparent ${darkMode ? "bg-gradient-to-b from-white to-slate-400" : "bg-gradient-to-b from-slate-900 to-slate-500"}`}>
-                H.I.V.E.
-              </h1>
-              <h2 className="text-xl md:text-3xl font-bold text-[#4361EE] mb-8">Heuristic Internet Volatility Engine</h2>
-              <p className={`text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
-                Institutional market forecasting driven entirely by the chaotic speed of internet sentiment.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-4">
-                <button onClick={() => setActiveTab('history')} className="w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_8px_30px_-6px_rgba(67,97,238,0.5)] hover:-translate-y-1 transition-all active:scale-95 text-lg">
-                  <Play className="w-5 h-5 mr-2 fill-current" /> Launch 2021 Simulation
-                </button>
-                <button onClick={() => setActiveTab('sandbox')} className={`w-full sm:w-auto px-8 py-4 rounded-2xl font-bold flex items-center justify-center border-2 transition-all hover:-translate-y-1 active:scale-95 text-lg ${darkMode ? "border-white/10 hover:border-white/20 bg-[#111318] text-white" : "border-slate-300 hover:border-slate-400 bg-white text-slate-900"}`}>
-                  <Sliders className="w-5 h-5 mr-2" /> Enter Prediction Sandbox
-                </button>
-              </div>
-            </div>
-
-            {/* PROBLEM HOOK */}
-            <Card className={`text-center py-16 mb-24 max-w-4xl mx-auto border-t-4 border-t-[#FF3366] ${darkMode ? "bg-gradient-to-b from-[#1A1D24] to-transparent" : "bg-gradient-to-b from-slate-100 to-transparent"}`}>
-              <h3 className="text-3xl md:text-4xl font-black text-[#FF3366] mb-6">Traditional math failed in 2021. Sentiment took over.</h3>
-              <p className={`text-lg md:text-xl leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                When millions of retail investors mobilized online, Wall Street hedge funds were blindsided. Standard financial models simply cannot predict social media hype. H.I.V.E. exists to translate the chaos of the internet into quantifiable, actionable risk metrics.
-              </p>
-            </Card>
-
-            {/* THE THREE PILLARS (BENTO) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
-              <Card className={`group hover:-translate-y-2 transition-all duration-300 ${darkMode ? "bg-[#111318]" : "bg-white"}`}>
-                <div className="w-16 h-16 rounded-[20px] bg-[#FF3366]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Shield className="w-8 h-8 text-[#FF3366]" />
-                </div>
-                <h4 className="text-xl font-bold mb-3">Early Warning Radar</h4>
-                <p className={`leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
-                  Don't wait for the crash. Our Z-Score anomaly detector continuously scans Reddit, flagging 'Critical Fear' and 'Extreme Hype' days before the broader market reacts.
-                </p>
-              </Card>
-
-              <Card className={`group hover:-translate-y-2 transition-all duration-300 ${darkMode ? "bg-[#111318]" : "bg-white"}`}>
-                <div className="w-16 h-16 rounded-[20px] bg-[#00FF88]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Brain className="w-8 h-8 text-[#00FF88]" />
-                </div>
-                <h4 className="text-xl font-bold mb-3">Root Cause XAI</h4>
-                <p className={`leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
-                  No black boxes. Click any market anomaly spike on our timeline to instantly reveal the exact social media narrative (and raw post) that drove the volatility.
-                </p>
-              </Card>
-
-              <Card className={`group hover:-translate-y-2 transition-all duration-300 ${darkMode ? "bg-[#111318]" : "bg-white"}`}>
-                <div className="w-16 h-16 rounded-[20px] bg-[#4361EE]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <TrendingUp className="w-8 h-8 text-[#4361EE]" />
-                </div>
-                <h4 className="text-xl font-bold mb-3">What-If Sandbox</h4>
-                <p className={`leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
-                  Generate quantile-bounded 30-day forward projections. Inject custom hype and sentiment scenarios to stress-test your portfolio against Black Swan internet events.
-                </p>
-              </Card>
-            </div>
-
-            {/* ARCHITECTURE FLEX */}
-            <div className="mb-24 flex flex-col items-center">
-              <h3 className="text-2xl font-bold mb-12 text-center">Powered by Institutional-Grade Architecture</h3>
-
-              <div className="flex flex-col md:flex-row flex-wrap items-center justify-center gap-4 text-sm font-mono font-bold text-center">
-                <div className={`px-6 py-4 rounded-2xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>
-                  53k Raw Posts
-                </div>
-                <ArrowRight className="w-6 h-6 text-[#4361EE] hidden md:block" />
-                <div className={`px-6 py-4 rounded-2xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>
-                  VADER NLP Engine
-                </div>
-                <ArrowRight className="w-6 h-6 text-[#4361EE] hidden md:block" />
-                <div className={`px-6 py-4 rounded-2xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>
-                  Quantile Regression
-                </div>
-                <ArrowRight className="w-6 h-6 text-[#4361EE] hidden md:block" />
-                <div className={`px-6 py-4 rounded-2xl border shadow-sm ${darkMode ? "bg-[#1A1D24] text-slate-300 border-white/5" : "bg-white text-slate-700 border-slate-200"}`}>
-                  FastAPI Backend
-                </div>
-                <ArrowRight className="w-6 h-6 text-[#4361EE] hidden md:block" />
-                <div className={`px-6 py-4 rounded-2xl border-2 shadow-lg ${darkMode ? "bg-[#4361EE]/10 text-[#4361EE] border-[#4361EE]/50" : "bg-blue-50 text-blue-700 border-blue-300"}`}>
-                  React / Next.js UI
-                </div>
-              </div>
-            </div>
-
-          </motion.div>
-        )}
-
-
-        {/* ================= TAB 1: HISTORY ================= */}
-        {activeTab === "history" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-
-            <div className="xl:col-span-8 flex flex-col gap-6">
-              <Card className="flex-1 min-h-[500px] flex flex-col">
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h2 className="text-xl font-bold">2021 Meme-Stock Simulation</h2>
-                    <p className={`text-xs mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Click lines for Root Cause XAI.</p>
+                <Card className="xl:flex-[5] min-h-[300px] xl:min-h-0 flex flex-col !p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <h2 className="text-base font-bold">2021 Meme-Stock Simulation</h2>
+                      <p className={`text-[10px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Click lines for Root Cause XAI.</p>
+                    </div>
                   </div>
-                </div>
-
-                <div className="w-full flex-1 min-h-[350px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={historyData.slice(0, historyIndex + 1)} margin={{ top: 20, right: 10, left: -20, bottom: 0 }} onClick={handleChartClick} className="cursor-pointer">
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#2A2E37" : "#e2e8f0"} opacity={0.6} />
-                      <XAxis dataKey="date" tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} tickMargin={10} />
-                      <YAxis domain={['auto', 'auto']} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
-                      <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "20px", color: darkMode ? '#fff' : '#000', padding: "16px" }} itemStyle={{ fontWeight: 600 }} />
-                      <Legend verticalAlign="top" height={40} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v}</span>} />
-
-                      <Line type="monotone" dataKey="actual_price" stroke={darkMode ? "#475569" : "#94a3b8"} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: darkMode ? "#475569" : "#94a3b8", strokeWidth: 0, cursor: "pointer", onClick: (e: any, p: any) => handleChartClick(p) }} name="Actual Market" isAnimationActive={!isPlayingHistory} animationDuration={300} />
-                      <Line type="monotone" dataKey="predicted_likely" stroke="#7209B7" filter={darkMode ? "url(#neonGlowPurple)" : ""} strokeWidth={4} dot={false} activeDot={{ r: 8, fill: "#7209B7", strokeWidth: 0, cursor: "pointer", onClick: (e: any, p: any) => handleChartClick(p) }} name="AI Prediction" isAnimationActive={!isPlayingHistory} animationDuration={300} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[320px]">
-                <Card className={`flex flex-col h-full ${darkMode ? "bg-gradient-to-br from-[#111318] to-[#1A1D24]" : "bg-gradient-to-br from-white to-slate-50"}`}>
-                  <h3 className="text-sm font-bold flex items-center mb-2"><BarChart3 className="w-5 h-5 mr-2 text-[#4CC9F0]" /> Sector Tug-of-War</h3>
-                  <div className="flex-1 w-full relative -mt-4">
+                  <div className="w-full flex-1 xl:min-h-0 min-h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={sectorRadarData}>
-                        <PolarGrid stroke={darkMode ? "#2A2E37" : "#e2e8f0"} />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: darkMode ? "#94a3b8" : "#64748b", fontSize: 11, fontWeight: 700 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                        <RechartsTooltip content={<CustomRadarTooltip />} />
-                        <Radar name="Sector" dataKey="value" stroke="#4CC9F0" strokeWidth={3} fill="#4CC9F0" fillOpacity={0.3} isAnimationActive={false} />
-                      </RadarChart>
+                      <ComposedChart data={historyData.slice(0, historyIndex + 1)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} onClick={handleChartClick} className="cursor-pointer">
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#2A2E37" : "#e2e8f0"} opacity={0.6} />
+                        <XAxis dataKey="date" tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} tickMargin={6} />
+                        <YAxis domain={['auto', 'auto']} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 9 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
+                        <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "12px", color: darkMode ? '#fff' : '#000', padding: "8px" }} itemStyle={{ fontWeight: 600, fontSize: "12px" }} />
+                        <Legend verticalAlign="top" height={24} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 text-[10px] ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v}</span>} />
+                        <Line type="monotone" dataKey="actual_price" stroke={darkMode ? "#475569" : "#94a3b8"} strokeWidth={2} dot={false} activeDot={{ r: 5, fill: darkMode ? "#475569" : "#94a3b8", strokeWidth: 0, cursor: "pointer", onClick: (e: any, p: any) => handleChartClick(p) }} name="Actual Market" isAnimationActive={!isPlayingHistory} animationDuration={300} />
+                        <Line type="monotone" dataKey="predicted_likely" stroke="#7209B7" filter={darkMode ? "url(#neonGlowPurple)" : ""} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#7209B7", strokeWidth: 0, cursor: "pointer", onClick: (e: any, p: any) => handleChartClick(p) }} name="AI Prediction" isAnimationActive={!isPlayingHistory} animationDuration={300} />
+                      </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                 </Card>
 
-                <Card className={`flex flex-col h-full ${darkMode ? "bg-gradient-to-bl from-[#111318] to-[#1A1D24]" : "bg-gradient-to-bl from-white to-slate-50"}`}>
-                  <h3 className="text-sm font-bold flex items-center mb-2"><Hexagon className="w-5 h-5 mr-2 text-[#FCAF45]" /> Mega-Cap Heatmap</h3>
-                  <div className="flex-1 w-full relative -mt-4">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={megaCapRadarData}>
-                        <PolarGrid stroke={darkMode ? "#2A2E37" : "#e2e8f0"} />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: darkMode ? "#94a3b8" : "#64748b", fontSize: 11, fontWeight: 700 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                        <RechartsTooltip content={<CustomRadarTooltip />} />
-                        <Radar name="MegaCap" dataKey="value" stroke="#FCAF45" strokeWidth={3} fill="#FCAF45" fillOpacity={0.3} isAnimationActive={false} />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </Card>
-              </div>
-            </div>
-
-            <div className="xl:col-span-4 flex flex-col gap-6">
-              <Card>
-                <div className="flex space-x-3 mb-6">
-                  <button onClick={() => setIsPlayingHistory(!isPlayingHistory)} className={`flex-1 py-4 rounded-2xl font-bold flex items-center justify-center transition-all shadow-sm ${darkMode ? "bg-white text-black hover:bg-slate-200" : "bg-slate-900 text-white hover:bg-slate-800"}`}>
-                    {isPlayingHistory ? <><Pause className="w-5 h-5 mr-2" /> Pause</> : <><Play className="w-5 h-5 mr-2" /> Play Timeline</>}
-                  </button>
-                  <button onClick={() => setHistoryIndex((p) => Math.min(p + 1, historyData.length - 1))} className={`px-5 py-4 rounded-2xl flex items-center transition-all ${darkMode ? "bg-[#1A1D24] hover:bg-[#2A2E37] border border-white/5" : "bg-slate-100 hover:bg-slate-200"}`}>
-                    <StepForward className="w-5 h-5" />
-                  </button>
+                <div className="xl:flex-[4] grid grid-cols-1 md:grid-cols-2 gap-3 xl:min-h-0">
+                  <Card className={`flex flex-col h-full !p-3 xl:min-h-0 ${darkMode ? "bg-gradient-to-br from-[#111318] to-[#1A1D24]" : "bg-gradient-to-br from-white to-slate-50"}`}>
+                    <h3 className="text-[11px] font-bold flex items-center mb-1"><BarChart3 className="w-3.5 h-3.5 mr-1 text-[#4CC9F0]" /> Sector Tug-of-War</h3>
+                    <div className="flex-1 w-full relative -mt-3">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={sectorRadarData}>
+                          <PolarGrid stroke={darkMode ? "#2A2E37" : "#e2e8f0"} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: darkMode ? "#94a3b8" : "#64748b", fontSize: 8, fontWeight: 700 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                          <RechartsTooltip content={<CustomRadarTooltip />} />
+                          <Radar name="Sector" dataKey="value" stroke="#4CC9F0" strokeWidth={2} fill="#4CC9F0" fillOpacity={0.3} isAnimationActive={false} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+                  <Card className={`flex flex-col h-full !p-3 xl:min-h-0 ${darkMode ? "bg-gradient-to-bl from-[#111318] to-[#1A1D24]" : "bg-gradient-to-bl from-white to-slate-50"}`}>
+                    <h3 className="text-[11px] font-bold flex items-center mb-1"><Hexagon className="w-3.5 h-3.5 mr-1 text-[#FCAF45]" /> Mega-Cap Heatmap</h3>
+                    <div className="flex-1 w-full relative -mt-3">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={megaCapRadarData}>
+                          <PolarGrid stroke={darkMode ? "#2A2E37" : "#e2e8f0"} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: darkMode ? "#94a3b8" : "#64748b", fontSize: 8, fontWeight: 700 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                          <RechartsTooltip content={<CustomRadarTooltip />} />
+                          <Radar name="MegaCap" dataKey="value" stroke="#FCAF45" strokeWidth={2} fill="#FCAF45" fillOpacity={0.3} isAnimationActive={false} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
                 </div>
+              </div>
 
-                <div className={`p-6 rounded-[24px] mb-6 relative overflow-hidden ${darkMode ? "bg-[#1A1D24] border border-white/5" : "bg-slate-50 border border-slate-200"}`}>
-                  <div className="grid grid-cols-2 gap-y-6 relative z-10">
-                    <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Date</p>
-                      <p className="font-mono font-bold text-base">{currentFrame.date || "--"}</p>
-                    </div>
-                    <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Market Price</p>
-                      <p className="font-mono font-bold text-base">${currentFrame.actual_price || "--"}</p>
-                    </div>
-                    <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Sentiment</p>
-                      <p className={`font-mono font-bold text-base ${currentFrame.sentiment_score >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>
-                        {currentFrame.sentiment_score > 0 ? "+" : ""}{currentFrame.sentiment_score || "--"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Anomaly Z-Score</p>
-                      <p className="font-mono font-bold text-base">{currentFrame.z_score || "--"}</p>
-                    </div>
-                  </div>
-
-                  {currentFrame.root_cause_text && (
-                    <button onClick={() => setNarrative({ date: currentFrame.date, text: currentFrame.root_cause_text, upvotes: currentFrame.root_cause_upvotes })} className="mt-6 w-full py-3 rounded-xl bg-[#4361EE]/10 text-[#4361EE] font-bold text-sm hover:bg-[#4361EE]/20 transition-all flex items-center justify-center">
-                      <Info className="w-4 h-4 mr-2" /> View Root Cause
+              <div className="xl:col-span-4 flex flex-col gap-3 xl:min-h-0">
+                <Card className="shrink-0 !p-4">
+                  <div className="flex space-x-2 mb-3">
+                    <button onClick={() => setIsPlayingHistory(!isPlayingHistory)} className={`flex-1 py-2.5 rounded-xl font-bold flex items-center justify-center transition-all shadow-sm text-[11px] ${darkMode ? "bg-white text-black hover:bg-slate-200" : "bg-slate-900 text-white hover:bg-slate-800"}`}>
+                      {isPlayingHistory ? <><Pause className="w-3.5 h-3.5 mr-1" /> Pause</> : <><Play className="w-3.5 h-3.5 mr-1" /> Play Timeline</>}
                     </button>
-                  )}
-                </div>
-
-                {/* BRANCH TO SANDBOX BUTTON */}
-                <button onClick={branchToSandbox} className="w-full py-4 rounded-2xl font-bold flex items-center justify-center bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_8px_20px_-6px_rgba(67,97,238,0.4)] hover:-translate-y-1 transition-all active:scale-95">
-                  <GitBranch className="w-5 h-5 mr-2" /> Branch to Sandbox
-                </button>
-              </Card>
-
-              <Card className="h-[400px] shrink-0 flex flex-col p-0 overflow-hidden border border-[#FF3366]/20">
-                <div className={`p-5 border-b shrink-0 ${darkMode ? "border-white/5 bg-[#1A1D24]" : "border-slate-100 bg-slate-50"}`}>
-                  <h3 className="text-sm font-bold flex items-center"><Activity className="w-5 h-5 mr-2 text-[#FF3366]" /> Live Radar Feed</h3>
-                </div>
-                <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                  {radarAlerts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full opacity-40">
-                      <Zap className={`w-8 h-8 mb-3 ${darkMode ? "text-slate-600" : "text-slate-400"}`} />
-                      <p className="text-sm font-bold">Scanning anomalies...</p>
+                    <button onClick={() => setHistoryIndex((p) => Math.min(p + 1, historyData.length - 1))} className={`px-4 py-2.5 rounded-xl flex items-center transition-all ${darkMode ? "bg-[#1A1D24] hover:bg-[#2A2E37] border border-white/5" : "bg-slate-100 hover:bg-slate-200"}`}><StepForward className="w-3.5 h-3.5" /></button>
+                  </div>
+                  <div className={`p-3 rounded-xl mb-3 relative overflow-hidden ${darkMode ? "bg-[#1A1D24] border border-white/5" : "bg-slate-50 border border-slate-200"}`}>
+                    <div className="grid grid-cols-2 gap-y-3 relative z-10">
+                      <div><p className={`text-[8px] font-bold uppercase tracking-wider mb-0.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Date</p><p className="font-mono font-bold text-[11px]">{currentFrame.date || "--"}</p></div>
+                      <div><p className={`text-[8px] font-bold uppercase tracking-wider mb-0.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Market Price</p><p className="font-mono font-bold text-[11px]">${currentFrame.actual_price || "--"}</p></div>
+                      <div><p className={`text-[8px] font-bold uppercase tracking-wider mb-0.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Sentiment</p><p className={`font-mono font-bold text-[11px] ${currentFrame.sentiment_score >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>{currentFrame.sentiment_score > 0 ? "+" : ""}{currentFrame.sentiment_score || "--"}</p></div>
+                      <div><p className={`text-[8px] font-bold uppercase tracking-wider mb-0.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Anomaly Z-Score</p><p className="font-mono font-bold text-[11px]">{currentFrame.z_score || "--"}</p></div>
                     </div>
-                  ) : (
-                    <AnimatePresence>
-                      {radarAlerts.map((alert, i) => (
-                        <motion.div key={`${alert.day}-${i}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className={`p-4 text-sm rounded-[20px] border ${alert.type === 'fear' ? (darkMode ? "bg-[#FF3366]/10 border-[#FF3366]/30 text-red-200" : "bg-red-50 border-red-200 text-[#FF3366]") : (darkMode ? "bg-[#00FF88]/10 border-[#00FF88]/30 text-green-200" : "bg-green-50 border-green-200 text-green-700")}`}>
-                          <div className="flex items-center mb-1.5 font-bold">
-                            <AlertTriangle className="w-4 h-4 mr-2" /> RADAR ALERT
+                  </div>
+                  <button onClick={branchToSandbox} className="w-full py-2.5 rounded-xl text-[11px] font-bold flex items-center justify-center bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_4px_15px_-4px_rgba(67,97,238,0.4)] transition-all active:scale-95"><GitBranch className="w-3.5 h-3.5 mr-1.5" /> Branch to Sandbox</button>
+                </Card>
+
+                <Card className="xl:flex-1 min-h-[250px] xl:min-h-0 flex flex-col p-0 overflow-hidden border border-[#FF3366]/20">
+                  <div className={`p-3 border-b shrink-0 ${darkMode ? "border-white/5 bg-[#1A1D24]" : "border-slate-100 bg-slate-50"}`}>
+                    <h3 className="text-[11px] font-bold flex items-center"><Activity className="w-3.5 h-3.5 mr-1.5 text-[#FF3366]" /> Live Radar Feed</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
+                    {radarAlerts.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full opacity-40">
+                        <Zap className={`w-5 h-5 mb-1.5 ${darkMode ? "text-slate-600" : "text-slate-400"}`} />
+                        <p className="text-[10px] font-bold">Scanning anomalies...</p>
+                      </div>
+                    ) : (
+                      <AnimatePresence>
+                        {radarAlerts.map((alert, i) => (
+                          <motion.div key={`${alert.day}-${i}`} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className={`p-2.5 text-[10px] rounded-xl border ${alert.type === 'fear' ? (darkMode ? "bg-[#FF3366]/10 border-[#FF3366]/30 text-red-200" : "bg-red-50 border-red-200 text-[#FF3366]") : (darkMode ? "bg-[#00FF88]/10 border-[#00FF88]/30 text-green-200" : "bg-green-50 border-green-200 text-green-700")}`}>
+                            <div className="flex items-center mb-0.5 font-bold"><AlertTriangle className="w-3 h-3 mr-1" /> RADAR ALERT</div>
+                            <p className="opacity-90">{alert.type === 'fear' ? 'Market Panic' : 'Extreme Euphoria'} (Z: {alert.z}).</p>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ================= TAB 2: SANDBOX ================= */}
+          {activeTab === "sandbox" && (
+            <motion.div variants={containerVariants} initial="hidden" animate="show" className="xl:h-full flex flex-col gap-3">
+              {!liveSyncData && (
+                <Card className="flex flex-col items-center justify-center h-full text-center p-8">
+                  <div className="w-20 h-20 bg-[#00FF88]/10 rounded-2xl flex items-center justify-center mb-6 border border-[#00FF88]/30"><Database className="w-10 h-10 text-[#00FF88]" /></div>
+                  <h2 className="text-2xl font-black mb-3">Live Database Sync</h2>
+                  <p className={`max-w-lg text-sm mb-8 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Initialize the ETL pipeline to scrape real-time market metrics.</p>
+                  <button onClick={initiateLiveSync} disabled={isSyncing} className={`px-8 py-4 rounded-2xl text-sm font-bold flex items-center justify-center transition-all transform active:scale-95 ${isSyncing ? "bg-[#1A1D24] text-slate-500 border border-white/10" : "bg-gradient-to-r from-[#00FF88] to-[#00BFFF] text-slate-900 shadow-[0_0_30px_rgba(0,255,136,0.3)] hover:-translate-y-1"}`}>
+                    {isSyncing ? <><RefreshCw className="w-5 h-5 mr-2 animate-spin" /> Fetching Market Data...</> : <><Terminal className="w-5 h-5 mr-2" /> Initiate Live ETL Pipeline</>}
+                  </button>
+                </Card>
+              )}
+
+              {liveSyncData && (
+                <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
+                  <div className="shrink-0 grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <Card className={`!p-3 border flex flex-col justify-center ${darkMode ? "border-[#00FF88]/30 bg-[#00FF88]/5" : "border-[#00FF88]/50 bg-[#00FF88]/10"}`}>
+                      <p className={`text-[9px] font-bold uppercase tracking-widest mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Live Price</p>
+                      <p className="text-lg font-mono font-black">${liveSyncData.latest_actual_price.toFixed(2)}</p>
+                    </Card>
+                    <Card className={`!p-3 border flex flex-col justify-center ${liveSyncData.live_sentiment_score >= 0 ? (darkMode ? "border-[#00FF88]/30 bg-[#00FF88]/5" : "border-[#00FF88]/50 bg-[#00FF88]/10") : (darkMode ? "border-[#FF3366]/30 bg-[#FF3366]/5" : "border-[#FF3366]/50 bg-[#FF3366]/10")}`}>
+                      <p className={`text-[9px] font-bold uppercase tracking-widest mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Sentiment</p>
+                      <p className={`text-lg font-mono font-black ${liveSyncData.live_sentiment_score >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>{liveSyncData.live_sentiment_score > 0 ? "+" : ""}{liveSyncData.live_sentiment_score.toFixed(3)}</p>
+                    </Card>
+                    <Card className="md:col-span-2 !p-3 flex flex-row items-center justify-between bg-gradient-to-b from-transparent to-black/10">
+                      <div className="text-left"><p className="text-[9px] font-bold text-[#FF3366] uppercase tracking-widest mb-0.5 flex items-center"><ArrowDownRight className="w-3 h-3 mr-0.5" /> Lower</p><p className="text-sm font-mono font-bold text-slate-400">${liveSyncData.live_forecast.lower_bound.toFixed(2)}</p></div>
+                      <div className="text-center px-3 border-x border-white/10"><p className="text-[9px] font-bold text-[#4361EE] uppercase tracking-widest mb-0.5 flex items-center justify-center"><Target className="w-3 h-3 mr-0.5" /> Target</p><p className="text-2xl font-mono font-black">${liveSyncData.live_forecast.target_price.toFixed(2)}</p></div>
+                      <div className="text-right"><p className="text-[9px] font-bold text-[#00FF88] uppercase tracking-widest mb-0.5 flex items-center justify-end"><ArrowUpRight className="w-3 h-3 mr-0.5" /> Upper</p><p className="text-sm font-mono font-bold text-slate-400">${liveSyncData.live_forecast.upper_bound.toFixed(2)}</p></div>
+                    </Card>
+                  </div>
+
+                  <a href={(liveSyncData.root_cause_url && liveSyncData.root_cause_url.length > 4 && liveSyncData.root_cause_url !== "nan") ? (liveSyncData.root_cause_url.includes('http') ? liveSyncData.root_cause_url : `https://reddit.com${liveSyncData.root_cause_url}`) : "https://finance.yahoo.com"} target="_blank" rel="noopener noreferrer" className="shrink-0 block w-full">
+                    <Card className={`group cursor-pointer border !p-3 ${darkMode ? "border-[#BF5CFF]/30 bg-gradient-to-r from-[#BF5CFF]/10 to-transparent" : "border-[#BF5CFF]/50 bg-gradient-to-r from-[#BF5CFF]/20 to-transparent"}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center"><Brain className="w-4 h-4 mr-2 text-[#BF5CFF]" /><h3 className="text-[11px] font-bold group-hover:underline decoration-[#BF5CFF] underline-offset-2 truncate max-w-xl md:max-w-3xl"><span className="text-[#BF5CFF] mr-1.5">AI NARRATIVE:</span> "{liveSyncData.root_cause_headline}"</h3></div>
+                        <ExternalLink className="w-3.5 h-3.5 text-[#BF5CFF] opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </Card>
+                  </a>
+
+                  <div className="xl:flex-1 grid grid-cols-1 xl:grid-cols-3 gap-3 xl:min-h-0">
+                    <Card className="xl:col-span-2 min-h-[300px] xl:min-h-0 flex flex-col !p-4 xl:h-full">
+                      <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-[13px] font-bold flex items-center"><TrendingUp className="w-4 h-4 mr-1 text-[#4361EE]" /> 30-Day Forward Trajectory</h2>
+                        {isFetchingForecast && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#4361EE]" />}
+                      </div>
+                      <div className={`w-full flex-1 xl:min-h-0 transition-opacity duration-300 ${isFetchingForecast ? "opacity-50" : "opacity-100"}`}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart key={chartKey} data={combinedChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorUncertainty" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4361EE" stopOpacity={darkMode ? 0.4 : 0.2} /><stop offset="95%" stopColor={darkMode ? "#4361EE" : "#4361EE"} stopOpacity={0.0} /></linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#2A2E37" : "#e2e8f0"} opacity={0.6} />
+                            <XAxis dataKey="day" type="number" domain={['dataMin', 'dataMax']} tickCount={7} tickFormatter={(t) => t === 0 ? "TODAY" : t > 0 ? `+${t}` : `${t}`} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 9, fontWeight: "bold" }} axisLine={false} tickLine={false} tickMargin={6} />
+                            <YAxis domain={[yAxisMin, yAxisMax]} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 9 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
+                            <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "12px", color: darkMode ? '#fff' : '#000', padding: "8px" }} formatter={(value: any, name: any) => [Array.isArray(value) ? `[$${value[0].toFixed(2)}, $${value[1].toFixed(2)}]` : `$${value.toFixed(2)}`, name.replace("_", " ")]} labelFormatter={(label) => label === 0 ? "TODAY" : label > 0 ? `Day +${label} (Forecast)` : `Day ${label} (Historical)`} itemStyle={{ fontWeight: 600, textTransform: "capitalize", fontSize: "11px" }} />
+                            <Legend verticalAlign="top" height={24} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 capitalize text-[10px] ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v.replace("_", " ")}</span>} />
+                            <ReferenceLine x={0} stroke={darkMode ? "#94a3b8" : "#64748b"} strokeDasharray="4 4" label={{ position: 'top', value: 'TODAY', fill: darkMode ? '#fff' : '#000', fontSize: 9, fontWeight: 'bold' }} />
+                            <Line type="monotone" dataKey="past_price" stroke={darkMode ? "#475569" : "#94a3b8"} strokeWidth={2} dot={false} activeDot={{ r: 5, fill: darkMode ? "#475569" : "#94a3b8", strokeWidth: 0 }} name="Past 30 Days" isAnimationActive={false} />
+                            <Area type="monotone" dataKey="uncertainty" stroke="none" fill="url(#colorUncertainty)" name="90% Bounds" isAnimationActive={true} animationDuration={2000} animationEasing="ease-out" />
+                            <Line type="monotone" dataKey="likely_price" stroke="#4361EE" filter={darkMode ? "url(#neonGlowBlue)" : ""} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#4361EE", strokeWidth: 0 }} name="Forecast" isAnimationActive={true} animationDuration={2000} animationEasing="ease-out" />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Card>
+
+                    <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
+                      <Card className={`flex-1 flex flex-col justify-center relative overflow-hidden !p-4 xl:min-h-0 ${darkMode ? "bg-gradient-to-br from-[#1A1D24] to-[#111318]" : "bg-white"}`}>
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-[#4361EE]/10 rounded-full blur-2xl"></div>
+                        <h4 className="font-bold flex items-center mb-3 text-xs"><Sliders className="w-3.5 h-3.5 mr-1.5 text-[#4361EE]" /> Stress-Test Sandbox</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Base Price</p>
+                            <input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} className={`w-full text-sm font-mono font-bold px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-[#4361EE] ${darkMode ? "bg-[#0A0C10] border border-white/10 text-white" : "bg-slate-100 border border-slate-300 text-slate-900"}`} />
                           </div>
-                          <p className="opacity-90">{alert.type === 'fear' ? 'Market Panic' : 'Extreme Euphoria'} (Z: {alert.z}).</p>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  )}
-                </div>
-              </Card>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ================= TAB 2: SANDBOX ================= */}
-        {activeTab === "sandbox" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col gap-6">
-
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <Card className="xl:col-span-2 min-h-[450px] flex flex-col">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold flex items-center"><TrendingUp className="w-5 h-5 mr-2 text-[#4361EE]" /> 30-Day Forward Trajectory</h2>
-                  {isFetching && <Loader2 className="w-5 h-5 animate-spin text-[#4361EE]" />}
-                </div>
-
-                <div className={`w-full flex-1 transition-opacity duration-300 ${isFetching ? "opacity-50" : "opacity-100"}`}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart key={chartKey} data={mappedData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorUncertainty" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#4361EE" stopOpacity={darkMode ? 0.4 : 0.2} />
-                          <stop offset="95%" stopColor={darkMode ? "#4361EE" : "#4361EE"} stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#2A2E37" : "#e2e8f0"} opacity={0.6} />
-                      <XAxis dataKey="day" type="number" domain={[1, 30]} tickCount={6} tickFormatter={(t) => `Day ${t}`} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} tickMargin={10} />
-                      <YAxis domain={[yAxisMin, yAxisMax]} tick={{ fill: darkMode ? "#64748b" : "#94a3b8", fontSize: 11 }} tickFormatter={(t) => `$${t}`} axisLine={false} tickLine={false} />
-                      <RechartsTooltip contentStyle={{ backgroundColor: darkMode ? 'rgba(17, 19, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)', backdropFilter: "blur(12px)", borderColor: darkMode ? '#2A2E37' : '#e2e8f0', borderRadius: "20px", color: darkMode ? '#fff' : '#000', padding: "16px" }} formatter={(value: any, name: any) => [Array.isArray(value) ? `[$${value[0]}, $${value[1]}]` : `$${value}`, name]} labelFormatter={(label) => `Day ${label}`} itemStyle={{ fontWeight: 600 }} />
-                      <Legend verticalAlign="top" height={40} iconType="circle" formatter={(v) => <span className={`font-semibold ml-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{v}</span>} />
-                      <Area type="monotone" dataKey="uncertainty" stroke="none" fill="url(#colorUncertainty)" name="90% Confidence Bounds" isAnimationActive={true} animationDuration={isSimulating ? 2000 : 500} animationEasing="ease-out" />
-                      <Line type="monotone" dataKey="likely_price" stroke="#4361EE" filter={darkMode ? "url(#neonGlowBlue)" : ""} strokeWidth={5} dot={false} activeDot={{ r: 8, fill: "#4361EE", strokeWidth: 0 }} name="Median Forecast" isAnimationActive={true} animationDuration={isSimulating ? 2000 : 500} animationEasing="ease-out" />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-
-              <div className="flex flex-col gap-6">
-                <Card className={`flex-1 flex flex-col justify-center relative overflow-hidden ${darkMode ? "bg-gradient-to-br from-[#1A1D24] to-[#111318]" : "bg-white"}`}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#4361EE]/10 rounded-full blur-3xl"></div>
-                  <h4 className="font-bold flex items-center mb-4 text-lg"><Sparkles className="w-5 h-5 mr-2 text-[#4361EE]" /> AI Projection</h4>
-
-                  {forecastData.length === 30 ? (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                        <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Target Price</span>
-                        <span className="text-3xl font-mono font-bold">${forecastData[29].likely_price.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                        <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Trajectory</span>
-                        <span className={`text-xl font-bold px-3 py-1 rounded-xl ${forecastData[29].likely_price > forecastData[0].likely_price ? "bg-[#00FF88]/10 text-[#00FF88]" : "bg-[#FF3366]/10 text-[#FF3366]"}`}>
-                          {forecastData[29].likely_price > forecastData[0].likely_price ? "BULLISH" : "BEARISH"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 pt-2">
-                        <div>
-                          <p className={`text-xs mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Lower Bound</p>
-                          <p className="font-mono font-bold">${forecastData[29].lower_bound.toFixed(0)}</p>
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <p className={`text-[9px] font-bold uppercase tracking-widest ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Sentiment Injection</p>
+                              <span className={`text-[11px] font-mono font-bold ${sentiment >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>{sentiment > 0 ? "+" : ""}{sentiment.toFixed(2)}</span>
+                            </div>
+                            <input type="range" min="-1.0" max="1.0" step="0.01" value={sentiment} onChange={(e) => setSentiment(Number(e.target.value))} className="w-full h-2.5 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full[&::-webkit-slider-thumb]:shadow-sm" style={{ background: `linear-gradient(to right, ${sentiment >= 0 ? '#00FF88' : '#FF3366'} ${((sentiment + 1) / 2) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${((sentiment + 1) / 2) * 100}%)` }} />
+                          </div>
                         </div>
-                        <div>
-                          <p className={`text-xs mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Upper Bound</p>
-                          <p className="font-mono font-bold">${forecastData[29].upper_bound.toFixed(0)}</p>
-                        </div>
-                      </div>
+                      </Card>
+                      <button onClick={runForecastSimulation} disabled={isFetchingForecast} className={`w-full py-3 shrink-0 rounded-xl font-bold text-xs flex items-center justify-center transition-all duration-300 transform active:scale-95 shadow-sm ${isFetchingForecast ? darkMode ? "bg-[#1A1D24] text-slate-500" : "bg-slate-200 text-slate-400" : "bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_0_15px_rgba(67,97,238,0.4)] hover:-translate-y-0.5"}`}>
+                        {isFetchingForecast ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Calculating...</> : <><Zap className="w-3.5 h-3.5 mr-1.5" /> Run Simulation</>}
+                      </button>
                     </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#4361EE]" /></div>
-                  )}
-                </Card>
-
-                <button onClick={startLiveSimulation} disabled={isSimulating} className={`w-full py-5 rounded-[24px] font-bold text-lg flex items-center justify-center transition-all duration-300 transform active:scale-95 shadow-lg ${isSimulating ? darkMode ? "bg-[#1A1D24] text-slate-500" : "bg-slate-200 text-slate-400" : "bg-gradient-to-r from-[#7209B7] to-[#4361EE] text-white hover:shadow-[0_0_30px_rgba(67,97,238,0.5)]"}`}>
-                  {isSimulating ? <><RefreshCw className="w-6 h-6 mr-3 animate-spin" /> Rendering Matrix...</> : <><Zap className="w-6 h-6 mr-3" /> Render Forecast</>}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="flex flex-col justify-between h-48 bg-gradient-to-br from-[#7209B7]/5 to-transparent">
-                  <div>
-                    <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Starting Price</p>
-                    <p className="text-3xl font-mono font-bold">${price}</p>
                   </div>
-                  <input type="range" min="3000" max="6000" step="10" value={price} onChange={(e) => setPrice(Number(e.target.value))} disabled={isSimulating} className="w-full h-4 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:opacity-0" style={{ background: `linear-gradient(to right, #7209B7 ${((price - 3000) / 3000) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${((price - 3000) / 3000) * 100}%)` }} />
-                </Card>
-
-                <Card className="flex flex-col justify-between h-48 bg-gradient-to-br from-[#4361EE]/5 to-transparent">
-                  <div>
-                    <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Retail Sentiment</p>
-                    <p className={`text-3xl font-mono font-bold ${sentiment >= 0 ? "text-[#00FF88]" : "text-[#FF3366]"}`}>{sentiment > 0 ? "+" : ""}{sentiment.toFixed(2)}</p>
-                  </div>
-                  <input type="range" min="-1.0" max="1.0" step="0.05" value={sentiment} onChange={(e) => setSentiment(Number(e.target.value))} disabled={isSimulating} className="w-full h-4 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none[&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6[&::-webkit-slider-thumb]:opacity-0" style={{ background: `linear-gradient(to right, #4361EE ${((sentiment + 1) / 2) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${((sentiment + 1) / 2) * 100}%)` }} />
-                </Card>
-
-                <Card className="flex flex-col justify-between h-48 bg-gradient-to-br from-[#FCAF45]/5 to-transparent">
-                  <div>
-                    <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Social Hype Volume</p>
-                    <p className="text-3xl font-mono font-bold text-[#FCAF45]">{(hype / 1000000).toFixed(2)}M</p>
-                  </div>
-                  <input type="range" min="1" max="5000000" step="10000" value={hype} onChange={(e) => setHype(Number(e.target.value))} disabled={isSimulating} className="w-full h-4 rounded-full appearance-none cursor-pointer bg-slate-200 dark:bg-[#1A1D24] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:opacity-0" style={{ background: `linear-gradient(to right, #FCAF45 ${(hype / 5000000) * 100}%, ${darkMode ? '#1A1D24' : '#e2e8f0'} ${(hype / 5000000) * 100}%)` }} />
-                </Card>
-              </div>
-
-              <div className="mt-8 flex items-center justify-center">
-                <p className={`text-sm font-medium flex items-center px-5 py-2.5 rounded-full ${darkMode ? "bg-[#1A1D24] text-slate-400 border border-white/5" : "bg-slate-200/50 text-slate-500"}`}>
-                  <Info className="w-4 h-4 mr-2" /> You can adjust the values in these boxes to simulate new market scenarios.
-                </p>
-              </div>
-            </div>
-
-          </motion.div>
-        )}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </div>
       </div>
     </div>
   );
